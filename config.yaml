@@ -1,0 +1,28 @@
+# Configuration for the database crash test using large dataset 
+# from the National Solar Radiation Database
+
+# --- Project Information ---
+project_info:
+  project_name: "solar radiation database crash test" 
+  location_name : ""
+  version: "1.0"  
+  description: "Use large solar radiation h5 file to test performance of MotherDuck"
+
+# --- AWS bucket paths ---
+# AWS S3 Explorer for the Open Energy Data Initiative 
+# https://data.openei.org/s3_viewer?bucket=nrel-pds-nsrdb
+aws_hdf5: 
+  full_disc_irradiance_2023: "s3://nrel-pds-nsrdb/GOES/full_disc/v4.0.0/nsrdb_full_disc_irradiance_2023.h5"
+
+# --- GCS bucket paths ---
+# intermediate data lake to store chunks of parquets source_files
+
+gcs: 
+  bucket_name: ""
+  output_prefix: "hdf5_conversion"
+
+# --- Setup chunks size & compression parameters ---
+processing: 
+  chunk_size: 100000
+  compression: "snappy"
+  part_number_padding: 4  # Number of digits for the part number in filenames (e.g., 4 -> part_0001.parquet)

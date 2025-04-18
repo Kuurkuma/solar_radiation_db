@@ -1,0 +1,1 @@
+solar_radiation_db
