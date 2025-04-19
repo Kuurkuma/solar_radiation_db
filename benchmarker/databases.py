@@ -31,7 +31,7 @@ class DockerDatabaseHandler:
             environment: Dict[str, str] = None,
             volumes: List[str] = None,
             cpu_limit: float = 1.0,
-            memory_limit: str = "1g",
+            memory_limit: str = "2g",
     ):
         """
         Initialize a database container manager.
@@ -169,7 +169,7 @@ class MySQLHandler(DockerDatabaseHandler):
             password: str = "password",
             tag: str = "8.0",
             cpu_limit: float = 1.0,
-            memory_limit: str = "1g",
+            memory_limit: str = "2g",
     ):
         """
         Initialize a MySQL container manager.
@@ -232,9 +232,9 @@ class PostgresHandler(DockerDatabaseHandler):
             user: str = "postgres",
             password: str = "postgres",
             database: str = "testdb",
-            tag: str = "14",
+            tag: str = "17",
             cpu_limit: float = 1.0,
-            memory_limit: str = "1g",
+            memory_limit: str = "2g",
     ):
         """
         Initialize a PostgreSQL container manager.
@@ -294,7 +294,7 @@ class ClickHouseHandler(DockerDatabaseHandler):
             http_port: int = 8123,
             tcp_port: int = 9000,
             user: str = "default",
-            password: str = "",
+            password: str = "wazzzuuup",
             database: str = "default",
             tag: str = "latest",
             cpu_limit: float = 2.0,
@@ -307,6 +307,7 @@ class ClickHouseHandler(DockerDatabaseHandler):
         environment = {
             "CLICKHOUSE_USER": user,
             "CLICKHOUSE_PASSWORD": password,
+            "CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT": "1",  # Enable access management
             "CLICKHOUSE_DB": database,
         }
 
@@ -334,18 +335,18 @@ class ClickHouseHandler(DockerDatabaseHandler):
         self.tcp_port = tcp_port
 
     def _is_db_ready(self) -> bool:
-        """Check if ClickHouse is ready by making a simple HTTP request."""
+        """Check if ClickHouse is ready using HTTP interface."""
         if not self.is_running():
             return False
 
         try:
-            exit_code, _ = self.container.exec_run(
-                f"clickhouse-client --user={self.username} --password={self.password} "
-                f"--query='SELECT 1'",
-                stderr=False
-            )
-            return exit_code == 0
-        except Exception:
+            import requests
+            # Use HTTP interface instead of clickhouse-client
+            url = f"http://{self.host}:{self.http_port}/?user={self.username}&password={self.password}"
+            response = requests.post(url, data="SELECT 1")
+            return response.status_code == 200
+        except Exception as e:
+            print(f"ClickHouse readiness check error: {e}")
             return False
 
     @property
@@ -357,44 +358,38 @@ class ClickHouseHandler(DockerDatabaseHandler):
 
 class DuckDBHandler(DockerDatabaseHandler):
     """
-    Manager for DuckDB database container.
-
-    Note: DuckDB doesn't have an official Docker image, so this implementation uses
-    a base Python image with DuckDB installed.
+    Manager for DuckDB database container with ephemeral storage.
     """
 
     def __init__(
             self,
             name: str = "duckdb-container",
-            db_file: str = "duckdb_data.db",
+            db_file: str = ":memory:",  # Use in-memory database by default
             tag: str = "3.11-slim",  # Using Python image for DuckDB
             cpu_limit: float = 1.0,
             memory_limit: str = "1g",
     ):
         """
-        Initialize a DuckDB container manager.
-
-        Args:
-            name: Container name
-            db_file: Name of the DuckDB database file
-            tag: Python Docker image tag to use
-            cpu_limit: CPU limit
-            memory_limit: Memory limit
+        Initialize an ephemeral DuckDB container manager.
         """
-        # Custom volumes for persisting DuckDB files
-        volumes = ["./duckdb_data:/data"]
-
+        # No volumes needed for ephemeral operation
         super().__init__(
             image="python",
             tag=tag,
             name=name,
-            volumes=volumes,
+            volumes=None,  # No volumes
             cpu_limit=cpu_limit,
             memory_limit=memory_limit,
         )
 
         self.db_file = db_file
-        self.database_path = f"/data/{db_file}"
+
+        # If using in-memory database
+        if db_file == ":memory:":
+            self.database_path = ":memory:"
+        else:
+            # Store in container's filesystem (will be lost when container is removed)
+            self.database_path = f"/tmp/{db_file}"
 
         # DuckDB doesn't use traditional username/password
         self.username = None
@@ -414,7 +409,6 @@ class DuckDBHandler(DockerDatabaseHandler):
             f"{self.image}:{self.tag}",
             name=self.name,
             detach=True,
-            volumes=self.volumes,
             cpu_quota=int(self.cpu_limit * 100000),
             mem_limit=self.memory_limit,
             command="sh -c 'pip install duckdb && tail -f /dev/null'"  # Keep container running
@@ -422,7 +416,7 @@ class DuckDBHandler(DockerDatabaseHandler):
 
         print(f"Started container: {self.name} ({self.container.id[:12]})")
 
-        # Install DuckDB
+        # Wait for DuckDB to be ready
         self._wait_for_ready(wait_time)
 
     def _is_db_ready(self) -> bool:
@@ -431,7 +425,7 @@ class DuckDBHandler(DockerDatabaseHandler):
             return False
 
         try:
-            # Wait for pip install to complete
+            # Wait for pip install to complete and test DuckDB
             exit_code, _ = self.container.exec_run(
                 f"python -c \"import duckdb; conn = duckdb.connect('{self.database_path}'); conn.execute('CREATE TABLE IF NOT EXISTS test (id INTEGER); DROP TABLE test;'); conn.close()\"",
                 stderr=False
@@ -466,12 +460,30 @@ if __name__ == "__main__":
             logger.info(f"{database_name} Connection String: {database_handler.sqlalchemy_connection_string}")
             logger.info(f"{database_name} is running!")
             # Do your database operations here
+
             try:
                 # Example SQLAlchemy usage
                 engine = create_engine(database_handler.sqlalchemy_connection_string)
                 with engine.connect() as conn:
-                    # Create a sample table
-                    conn.execute(text("CREATE TABLE IF NOT EXISTS test_table (id INT, name VARCHAR(255))"))
+
+                    if database_name != "clickhouse":
+                        # Create a sample table
+                        conn.execute(text("CREATE TABLE IF NOT EXISTS test_table (id INT, name VARCHAR(255))"))
+                    else:  # For ClickHouse
+                        conn.execute(text(
+                            """
+                            CREATE TABLE IF NOT EXISTS test_table
+                            (
+                                id
+                                UInt32,
+                                name
+                                String
+                            ) ENGINE = MergeTree
+                            (
+                            )
+                                ORDER BY id
+                            """
+                        ))
 
                     # Insert sample data
                     conn.execute(text("INSERT INTO test_table (id, name) VALUES (1, 'Test Record')"))
