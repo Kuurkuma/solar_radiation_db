@@ -1,4 +1,5 @@
 import time
+import sys
 import docker
 from docker.models.containers import Container
 from typing import Optional, Dict, Any, List, Tuple
@@ -7,16 +8,14 @@ import sqlalchemy
 from sqlalchemy import create_engine, text
 from sqlalchemy.exc import SQLAlchemyError
 
-
-
-
-# Create a handler (for console output)
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S',
+    stream=sys.stdout
+)
 
 logger = logging.getLogger("databases")
-handler = logging.StreamHandler()
-formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s',
-                              datefmt='%Y-%m-%d %H:%M:%S')
-handler.setFormatter(formatter)
 
 
 class DockerDatabaseHandler:
@@ -72,7 +71,7 @@ class DockerDatabaseHandler:
             wait_time: Time to wait for container to be ready (seconds)
         """
         if self.is_running():
-            print(f"Container {self.name} is already running")
+            logger.info(f"Container {self.name} is already running")
             return
 
         ports = {f"{port}/tcp": host_port for port, host_port in self.port_mapping.items()}
@@ -89,7 +88,7 @@ class DockerDatabaseHandler:
             mem_limit=self.memory_limit,
         )
 
-        print(f"Started container: {self.name} ({self.container.id[:12]})")
+        logger.info(f"Started container: {self.name} ({self.container.id[:12]})")
 
         # Wait for container to be ready
         self._wait_for_ready(wait_time)
@@ -102,15 +101,15 @@ class DockerDatabaseHandler:
             remove: Whether to remove the container after stopping
         """
         if not self.is_running():
-            print(f"Container {self.name} is not running")
+            logger.info(f"Container {self.name} is not running")
             return
 
         self.container.stop()
-        print(f"Stopped container: {self.name}")
+        logger.info(f"Stopped container: {self.name}")
 
         if remove:
             self.container.remove()
-            print(f"Removed container: {self.name}")
+            logger.info(f"Removed container: {self.name}")
             self.container = None
 
     def is_running(self) -> bool:
@@ -134,11 +133,11 @@ class DockerDatabaseHandler:
         start_time = time.time()
         while time.time() - start_time < timeout:
             if self._is_db_ready():
-                print(f"{self.__class__.__name__} is ready")
+                logger.info(f"{self.__class__.__name__} is ready")
                 return
             time.sleep(1)
 
-        print(f"Warning: Timed out waiting for {self.__class__.__name__} to be ready")
+        logger.info(f"Warning: Timed out waiting for {self.__class__.__name__} to be ready")
 
     def _is_db_ready(self) -> bool:
         """
@@ -346,7 +345,7 @@ class ClickHouseHandler(DockerDatabaseHandler):
             response = requests.post(url, data="SELECT 1")
             return response.status_code == 200
         except Exception as e:
-            print(f"ClickHouse readiness check error: {e}")
+            logger.info(f"ClickHouse readiness check error: {e}")
             return False
 
     @property
@@ -401,7 +400,7 @@ class DuckDBHandler(DockerDatabaseHandler):
         Start the DuckDB container.
         """
         if self.is_running():
-            print(f"Container {self.name} is already running")
+            logger.info(f"Container {self.name} is already running")
             return
 
         # Create and start container with custom command to install DuckDB
@@ -414,7 +413,7 @@ class DuckDBHandler(DockerDatabaseHandler):
             command="sh -c 'pip install duckdb && tail -f /dev/null'"  # Keep container running
         )
 
-        print(f"Started container: {self.name} ({self.container.id[:12]})")
+        logger.info(f"Started container: {self.name} ({self.container.id[:12]})")
 
         # Wait for DuckDB to be ready
         self._wait_for_ready(wait_time)
@@ -490,7 +489,7 @@ if __name__ == "__main__":
 
                     # Query the data
                     result = conn.execute(text("SELECT * FROM test_table"))
-                    print("Sample query result:", result.fetchall())
+                    logger.info("Sample query result:", result.fetchall())
 
                     # Clean up
                     conn.execute(text("DROP TABLE test_table"))
