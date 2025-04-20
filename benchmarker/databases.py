@@ -2,17 +2,16 @@ import time
 import sys
 import docker
 from docker.models.containers import Container
-from typing import Optional, Dict, Any, List, Tuple
+from typing import Optional, Dict, List
 import logging
-import sqlalchemy
 from sqlalchemy import create_engine, text
 from sqlalchemy.exc import SQLAlchemyError
 
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s',
-    datefmt='%Y-%m-%d %H:%M:%S',
-    stream=sys.stdout
+    format="%(asctime)s - %(levelname)s - %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+    stream=sys.stdout,
 )
 
 logger = logging.getLogger("databases")
@@ -22,15 +21,15 @@ class DockerDatabaseHandler:
     """Base class for managing database containers."""
 
     def __init__(
-            self,
-            image: str,
-            tag: str = "latest",
-            name: str = None,
-            port_mapping: Dict[int, int] = None,
-            environment: Dict[str, str] = None,
-            volumes: List[str] = None,
-            cpu_limit: float = 1.0,
-            memory_limit: str = "2g",
+        self,
+        image: str,
+        tag: str = "latest",
+        name: str = None,
+        port_mapping: Dict[int, int] = None,
+        environment: Dict[str, str] = None,
+        volumes: List[str] = None,
+        cpu_limit: float = 1.0,
+        memory_limit: str = "2g",
     ):
         """
         Initialize a database container manager.
@@ -74,7 +73,9 @@ class DockerDatabaseHandler:
             logger.info(f"Container {self.name} is already running")
             return
 
-        ports = {f"{port}/tcp": host_port for port, host_port in self.port_mapping.items()}
+        ports = {
+            f"{port}/tcp": host_port for port, host_port in self.port_mapping.items()
+        }
 
         # Create and start container
         self.container = self.client.containers.run(
@@ -84,7 +85,9 @@ class DockerDatabaseHandler:
             environment=self.environment,
             ports=ports,
             volumes=self.volumes,
-            cpu_quota=int(self.cpu_limit * 100000),  # Docker uses CPU quota in microseconds
+            cpu_quota=int(
+                self.cpu_limit * 100000
+            ),  # Docker uses CPU quota in microseconds
             mem_limit=self.memory_limit,
         )
 
@@ -137,7 +140,9 @@ class DockerDatabaseHandler:
                 return
             time.sleep(1)
 
-        logger.info(f"Warning: Timed out waiting for {self.__class__.__name__} to be ready")
+        logger.info(
+            f"Warning: Timed out waiting for {self.__class__.__name__} to be ready"
+        )
 
     def _is_db_ready(self) -> bool:
         """
@@ -152,23 +157,25 @@ class DockerDatabaseHandler:
         Get the SQLAlchemy connection string.
         To be implemented by subclasses.
         """
-        raise NotImplementedError("Subclasses must implement sqlalchemy_connection_string")
+        raise NotImplementedError(
+            "Subclasses must implement sqlalchemy_connection_string"
+        )
 
 
 class MySQLHandler(DockerDatabaseHandler):
     """Manager for MySQL database containers."""
 
     def __init__(
-            self,
-            name: str = "mysql-db",
-            port: int = 3306,
-            root_password: str = "rootpassword",
-            database: str = "testdb",
-            user: str = "user",
-            password: str = "password",
-            tag: str = "8.0",
-            cpu_limit: float = 1.0,
-            memory_limit: str = "2g",
+        self,
+        name: str = "mysql-db",
+        port: int = 3306,
+        root_password: str = "rootpassword",
+        database: str = "testdb",
+        user: str = "user",
+        password: str = "password",
+        tag: str = "8.0",
+        cpu_limit: float = 1.0,
+        memory_limit: str = "2g",
     ):
         """
         Initialize a MySQL container manager.
@@ -208,8 +215,7 @@ class MySQLHandler(DockerDatabaseHandler):
 
         try:
             exit_code, _ = self.container.exec_run(
-                f"mysql -u{self.username} -p{self.password} -e 'SELECT 1'",
-                stderr=False
+                f"mysql -u{self.username} -p{self.password} -e 'SELECT 1'", stderr=False
             )
             return exit_code == 0
         except Exception:
@@ -225,15 +231,15 @@ class PostgresHandler(DockerDatabaseHandler):
     """Manager for PostgreSQL database containers."""
 
     def __init__(
-            self,
-            name: str = "postgres-db",
-            port: int = 5432,
-            user: str = "postgres",
-            password: str = "postgres",
-            database: str = "testdb",
-            tag: str = "17",
-            cpu_limit: float = 1.0,
-            memory_limit: str = "2g",
+        self,
+        name: str = "postgres-db",
+        port: int = 5432,
+        user: str = "postgres",
+        password: str = "postgres",
+        database: str = "testdb",
+        tag: str = "17",
+        cpu_limit: float = 1.0,
+        memory_limit: str = "2g",
     ):
         """
         Initialize a PostgreSQL container manager.
@@ -271,8 +277,7 @@ class PostgresHandler(DockerDatabaseHandler):
 
         try:
             exit_code, _ = self.container.exec_run(
-                f"pg_isready -U {self.username} -d {self.database}",
-                stderr=False
+                f"pg_isready -U {self.username} -d {self.database}", stderr=False
             )
             return exit_code == 0
         except Exception:
@@ -288,16 +293,16 @@ class ClickHouseHandler(DockerDatabaseHandler):
     """Manager for ClickHouse database containers."""
 
     def __init__(
-            self,
-            name: str = "clickhouse-db",
-            http_port: int = 8123,
-            tcp_port: int = 9000,
-            user: str = "default",
-            password: str = "wazzzuuup",
-            database: str = "default",
-            tag: str = "latest",
-            cpu_limit: float = 2.0,
-            memory_limit: str = "4g",
+        self,
+        name: str = "clickhouse-db",
+        http_port: int = 8123,
+        tcp_port: int = 9000,
+        user: str = "default",
+        password: str = "wazzzuuup",
+        database: str = "default",
+        tag: str = "latest",
+        cpu_limit: float = 2.0,
+        memory_limit: str = "4g",
     ):
         """
         Initialize a ClickHouse container manager.
@@ -340,6 +345,7 @@ class ClickHouseHandler(DockerDatabaseHandler):
 
         try:
             import requests
+
             # Use HTTP interface instead of clickhouse-client
             url = f"http://{self.host}:{self.http_port}/?user={self.username}&password={self.password}"
             response = requests.post(url, data="SELECT 1")
@@ -361,12 +367,12 @@ class DuckDBHandler(DockerDatabaseHandler):
     """
 
     def __init__(
-            self,
-            name: str = "duckdb-container",
-            db_file: str = ":memory:",  # Use in-memory database by default
-            tag: str = "3.11-slim",  # Using Python image for DuckDB
-            cpu_limit: float = 1.0,
-            memory_limit: str = "1g",
+        self,
+        name: str = "duckdb-container",
+        db_file: str = ":memory:",  # Use in-memory database by default
+        tag: str = "3.11-slim",  # Using Python image for DuckDB
+        cpu_limit: float = 1.0,
+        memory_limit: str = "1g",
     ):
         """
         Initialize an ephemeral DuckDB container manager.
@@ -410,7 +416,7 @@ class DuckDBHandler(DockerDatabaseHandler):
             detach=True,
             cpu_quota=int(self.cpu_limit * 100000),
             mem_limit=self.memory_limit,
-            command="sh -c 'pip install duckdb && tail -f /dev/null'"  # Keep container running
+            command="sh -c 'pip install duckdb && tail -f /dev/null'",  # Keep container running
         )
 
         logger.info(f"Started container: {self.name} ({self.container.id[:12]})")
@@ -427,7 +433,7 @@ class DuckDBHandler(DockerDatabaseHandler):
             # Wait for pip install to complete and test DuckDB
             exit_code, _ = self.container.exec_run(
                 f"python -c \"import duckdb; conn = duckdb.connect('{self.database_path}'); conn.execute('CREATE TABLE IF NOT EXISTS test (id INTEGER); DROP TABLE test;'); conn.close()\"",
-                stderr=False
+                stderr=False,
             )
             return exit_code == 0
         except Exception:
@@ -447,8 +453,12 @@ if __name__ == "__main__":
     databases = {
         "mysql": MySQLHandler(name="test-mysql", port=3306, cpu_limit=2),
         "postgres": PostgresHandler(name="test-postgres", port=5432, cpu_limit=2),
-        "duckdb": DuckDBHandler(name="test-duckdb", db_file="duckdb_data.db", cpu_limit=2),
-        "clickhouse": ClickHouseHandler(name="test-clickhouse", http_port=8124, tcp_port=9001, cpu_limit=2),
+        "duckdb": DuckDBHandler(
+            name="test-duckdb", db_file="duckdb_data.db", cpu_limit=2
+        ),
+        "clickhouse": ClickHouseHandler(
+            name="test-clickhouse", http_port=8124, tcp_port=9001, cpu_limit=2
+        ),
     }
 
     for database_name, database_handler in databases.items():
@@ -456,7 +466,9 @@ if __name__ == "__main__":
 
         try:
             database_handler.start()
-            logger.info(f"{database_name} Connection String: {database_handler.sqlalchemy_connection_string}")
+            logger.info(
+                f"{database_name} Connection String: {database_handler.sqlalchemy_connection_string}"
+            )
             logger.info(f"{database_name} is running!")
             # Do your database operations here
 
@@ -467,10 +479,15 @@ if __name__ == "__main__":
 
                     if database_name != "clickhouse":
                         # Create a sample table
-                        conn.execute(text("CREATE TABLE IF NOT EXISTS test_table (id INT, name VARCHAR(255))"))
+                        conn.execute(
+                            text(
+                                "CREATE TABLE IF NOT EXISTS test_table (id INT, name VARCHAR(255))"
+                            )
+                        )
                     else:  # For ClickHouse
-                        conn.execute(text(
-                            """
+                        conn.execute(
+                            text(
+                                """
                             CREATE TABLE IF NOT EXISTS test_table
                             (
                                 id
@@ -482,10 +499,15 @@ if __name__ == "__main__":
                             )
                                 ORDER BY id
                             """
-                        ))
+                            )
+                        )
 
                     # Insert sample data
-                    conn.execute(text("INSERT INTO test_table (id, name) VALUES (1, 'Test Record')"))
+                    conn.execute(
+                        text(
+                            "INSERT INTO test_table (id, name) VALUES (1, 'Test Record')"
+                        )
+                    )
 
                     # Query the data
                     result = conn.execute(text("SELECT * FROM test_table"))
@@ -501,4 +523,3 @@ if __name__ == "__main__":
             logger.error(f"Could startup handler {database_name}: with error {e}")
         finally:
             database_handler.stop(remove=True)
-

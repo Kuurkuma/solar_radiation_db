@@ -2,20 +2,16 @@ import logging
 import sys
 from databases import MySQLHandler, PostgresHandler, ClickHouseHandler, DuckDBHandler
 import pandas as pd
-import sqlalchemy
 from sqlalchemy import create_engine, text
-from sqlalchemy.exc import SQLAlchemyError
 
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s',
-    datefmt='%Y-%m-%d %H:%M:%S',
-    stream=sys.stdout
+    format="%(asctime)s - %(levelname)s - %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+    stream=sys.stdout,
 )
 
 logger = logging.getLogger("main")
-
-
 
 
 class Benchmarker(object):
@@ -48,10 +44,12 @@ class Benchmarker(object):
                     if isinstance(database_handler, ClickHouseHandler):
                         # Create table with engine before loading data
                         # Escape column names with backticks for ClickHouse
-                        columns = ", ".join([
-                            f"`{col}` {self._get_clickhouse_type(self.data[col])}"
-                            for col in self.data.columns
-                        ])
+                        columns = ", ".join(
+                            [
+                                f"`{col}` {self._get_clickhouse_type(self.data[col])}"
+                                for col in self.data.columns
+                            ]
+                        )
                         create_table_sql = f"""
                                CREATE TABLE IF NOT EXISTS data (
                                    {columns}
@@ -60,10 +58,14 @@ class Benchmarker(object):
                         conn.execute(text(create_table_sql))
 
                         # Now we can load the data
-                        self.data.to_sql(con=conn, name="data", if_exists="append", index=False)
+                        self.data.to_sql(
+                            con=conn, name="data", if_exists="append", index=False
+                        )
                     else:
                         # For other databases, use the standard method
-                        self.data.to_sql(con=conn, name="data", if_exists="replace", index=False)
+                        self.data.to_sql(
+                            con=conn, name="data", if_exists="replace", index=False
+                        )
 
                     ### query data
                     data = pd.read_sql_query(self.queries[0], conn)
@@ -89,16 +91,17 @@ if __name__ == "__main__":
     databases = {
         "mysql": MySQLHandler(name="test-mysql", port=3306, cpu_limit=2),
         "postgres": PostgresHandler(name="test-postgres", port=5432, cpu_limit=2),
-        "duckdb": DuckDBHandler(name="test-duckdb", db_file="duckdb_data.db", cpu_limit=2),
-        "clickhouse": ClickHouseHandler(name="test-clickhouse", http_port=8124, tcp_port=9001, cpu_limit=2),
+        "duckdb": DuckDBHandler(
+            name="test-duckdb", db_file="duckdb_data.db", cpu_limit=2
+        ),
+        "clickhouse": ClickHouseHandler(
+            name="test-clickhouse", http_port=8124, tcp_port=9001, cpu_limit=2
+        ),
     }
     benchmarker.define_database_handlers(database_handlers=databases)
-    benchmarker.get_data(url="https://gist.githubusercontent.com/netj/8836201/raw/6f9306ad21398ea43cba4f7d537619d0e07d5ae3/iris.csv")
-    queries = [
-        "SELECT * FROM data;"
-    ]
+    benchmarker.get_data(
+        url="https://gist.githubusercontent.com/netj/8836201/raw/6f9306ad21398ea43cba4f7d537619d0e07d5ae3/iris.csv"
+    )
+    queries = ["SELECT * FROM data;"]
     benchmarker.define_queries(queries=queries)
     benchmarker.benchmark_queries()
-
-
-
