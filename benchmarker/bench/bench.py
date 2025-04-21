@@ -34,6 +34,7 @@ class Benchmarker(object):
     :ivar queries: A list of SQL queries to execute during benchmarking.
     :type queries: list or None
     """
+
     def __init__(self):
         """
         Represents a class for managing results, database handlers, data, and queries.
@@ -133,7 +134,9 @@ class Benchmarker(object):
                         # Log some sample results
                         if not result.empty:
                             sample_size = min(5, len(result))
-                            logger.info(f"Sample result ({len(result)} rows total):\n{result.head(sample_size)}")
+                            logger.info(
+                                f"Sample result ({len(result)} rows total):\n{result.head(sample_size)}"
+                            )
 
             except Exception as e:
                 logger.error(f"Error benchmarking {database_name}: {e}")
@@ -174,8 +177,10 @@ class Benchmarker(object):
         if isinstance(database_handler, ClickHouseHandler):
             # Create table with engine before loading data
             columns = ", ".join(
-                [f"`{col}` {self._get_clickhouse_type(self.data[col])}"
-                 for col in self.data.columns]
+                [
+                    f"`{col}` {self._get_clickhouse_type(self.data[col])}"
+                    for col in self.data.columns
+                ]
             )
             create_table_sql = f"""
                 CREATE TABLE IF NOT EXISTS data (
@@ -185,14 +190,10 @@ class Benchmarker(object):
             conn.execute(text(create_table_sql))
 
             # Now we can load the data
-            self.data.to_sql(
-                con=conn, name="data", if_exists="append", index=False
-            )
+            self.data.to_sql(con=conn, name="data", if_exists="append", index=False)
         else:
             # For other databases, use the standard method
-            self.data.to_sql(
-                con=conn, name="data", if_exists="replace", index=False
-            )
+            self.data.to_sql(con=conn, name="data", if_exists="replace", index=False)
 
         # Verify data was loaded correctly
         count_query = "SELECT COUNT(*) FROM data"
@@ -212,29 +213,33 @@ class Benchmarker(object):
 
         :return: None
         """
-        if not hasattr(self, 'metrics_df') or self.metrics_df.empty:
+        if not hasattr(self, "metrics_df") or self.metrics_df.empty:
             logger.warning("No metrics collected")
             return
 
         logger.info("\n===== BENCHMARK SUMMARY =====")
 
         # Group by database type and calculate averages
-        summary = self.metrics_df.groupby('database_type').agg({
-            'execution_time_ms': ['mean', 'min', 'max'],
-            'cpu_usage_percent': 'mean',
-            'memory_usage_mb': 'mean',
-            'disk_read_mb': 'sum',
-            'disk_write_mb': 'sum'
-        })
+        summary = self.metrics_df.groupby("database_type").agg(
+            {
+                "execution_time_ms": ["mean", "min", "max"],
+                "cpu_usage_percent": "mean",
+                "memory_usage_mb": "mean",
+                "disk_read_mb": "sum",
+                "disk_write_mb": "sum",
+            }
+        )
 
         logger.info(f"\nPerformance Summary:\n{summary}")
 
         # Find the fastest database for each query
-        for query in self.metrics_df['query'].unique():
-            query_df = self.metrics_df[self.metrics_df['query'] == query]
-            fastest = query_df.loc[query_df['execution_time_ms'].idxmin()]
-            logger.info(f"\nFastest for query '{query[:50]}...': {fastest['database_type']} " +
-                        f"({fastest['execution_time_ms']:.2f}ms)")
+        for query in self.metrics_df["query"].unique():
+            query_df = self.metrics_df[self.metrics_df["query"] == query]
+            fastest = query_df.loc[query_df["execution_time_ms"].idxmin()]
+            logger.info(
+                f"\nFastest for query '{query[:50]}...': {fastest['database_type']} "
+                + f"({fastest['execution_time_ms']:.2f}ms)"
+            )
 
     def save_metrics_to_csv(self, filename: str = "benchmark_results.csv"):
         """
@@ -249,7 +254,7 @@ class Benchmarker(object):
         :type filename: str
         :return: None
         """
-        if hasattr(self, 'metrics_df') and not self.metrics_df.empty:
+        if hasattr(self, "metrics_df") and not self.metrics_df.empty:
             self.metrics_df.to_csv(filename, index=False)
             logger.info(f"Benchmark results saved to {filename}")
         else:

@@ -71,18 +71,18 @@ class QueryMetrics:
     def to_dict(self) -> Dict[str, Any]:
         """Convert metrics to dictionary."""
         return {
-            'query': self.query,
-            'database_type': self.database_type,
-            'execution_time_ms': self.execution_time_ms,
-            'cpu_usage_percent': self.cpu_usage_percent,
-            'memory_usage_mb': self.memory_usage_mb,
-            'memory_usage_percent': self.memory_usage_percent,
-            'disk_read_mb': self.disk_read_mb,
-            'disk_write_mb': self.disk_write_mb,
-            'network_in_mb': self.network_in_mb,
-            'network_out_mb': self.network_out_mb,
-            'result_rows': self.result_rows,
-            'result_size_mb': self.result_size_mb
+            "query": self.query,
+            "database_type": self.database_type,
+            "execution_time_ms": self.execution_time_ms,
+            "cpu_usage_percent": self.cpu_usage_percent,
+            "memory_usage_mb": self.memory_usage_mb,
+            "memory_usage_percent": self.memory_usage_percent,
+            "disk_read_mb": self.disk_read_mb,
+            "disk_write_mb": self.disk_write_mb,
+            "network_in_mb": self.network_in_mb,
+            "network_out_mb": self.network_out_mb,
+            "result_rows": self.result_rows,
+            "result_size_mb": self.result_size_mb,
         }
 
 
@@ -352,7 +352,9 @@ class DockerDatabaseHandler:
                 # Execute the query and measure time
                 result = pd.read_sql_query(query, conn)
                 metrics.result_rows = len(result)
-                metrics.result_size_mb = result.memory_usage(deep=True).sum() / (1024 * 1024)
+                metrics.result_size_mb = result.memory_usage(deep=True).sum() / (
+                    1024 * 1024
+                )
         except Exception as e:
             logger.error(f"Query execution failed: {e}")
             raise
@@ -366,19 +368,29 @@ class DockerDatabaseHandler:
             curr_stats = self._get_container_stats()
 
             # Calculate resource usage
-            metrics.cpu_usage_percent = curr_stats['cpu_percent']
-            metrics.memory_usage_mb = curr_stats['memory_usage_mb']
-            metrics.memory_usage_percent = curr_stats['memory_percent']
+            metrics.cpu_usage_percent = curr_stats["cpu_percent"]
+            metrics.memory_usage_mb = curr_stats["memory_usage_mb"]
+            metrics.memory_usage_percent = curr_stats["memory_percent"]
 
             # Calculate I/O differences
-            metrics.disk_read_mb = (curr_stats['block_read'] - prev_stats['block_read']) / (1024 * 1024)
-            metrics.disk_write_mb = (curr_stats['block_write'] - prev_stats['block_write']) / (1024 * 1024)
-            metrics.network_in_mb = (curr_stats['network_in'] - prev_stats['network_in']) / (1024 * 1024)
-            metrics.network_out_mb = (curr_stats['network_out'] - prev_stats['network_out']) / (1024 * 1024)
+            metrics.disk_read_mb = (
+                curr_stats["block_read"] - prev_stats["block_read"]
+            ) / (1024 * 1024)
+            metrics.disk_write_mb = (
+                curr_stats["block_write"] - prev_stats["block_write"]
+            ) / (1024 * 1024)
+            metrics.network_in_mb = (
+                curr_stats["network_in"] - prev_stats["network_in"]
+            ) / (1024 * 1024)
+            metrics.network_out_mb = (
+                curr_stats["network_out"] - prev_stats["network_out"]
+            ) / (1024 * 1024)
 
-        logger.info(f"Query executed in {metrics.execution_time_ms:.2f}ms, " +
-                    f"CPU: {metrics.cpu_usage_percent:.2f}%, " +
-                    f"Memory: {metrics.memory_usage_mb:.2f}MB ({metrics.memory_usage_percent:.2f}%)")
+        logger.info(
+            f"Query executed in {metrics.execution_time_ms:.2f}ms, "
+            + f"CPU: {metrics.cpu_usage_percent:.2f}%, "
+            + f"Memory: {metrics.memory_usage_mb:.2f}MB ({metrics.memory_usage_percent:.2f}%)"
+        )
 
         return result, metrics
 
@@ -406,50 +418,68 @@ class DockerDatabaseHandler:
             stats = self.container.stats(stream=False)
 
             # Extract CPU usage
-            cpu_delta = stats['cpu_stats']['cpu_usage']['total_usage'] - \
-                        stats['precpu_stats']['cpu_usage']['total_usage']
-            system_delta = stats['cpu_stats']['system_cpu_usage'] - \
-                           stats['precpu_stats']['system_cpu_usage']
-            online_cpus = stats['cpu_stats'].get('online_cpus', len(psutil.cpu_percent(percpu=True)))
+            cpu_delta = (
+                stats["cpu_stats"]["cpu_usage"]["total_usage"]
+                - stats["precpu_stats"]["cpu_usage"]["total_usage"]
+            )
+            system_delta = (
+                stats["cpu_stats"]["system_cpu_usage"]
+                - stats["precpu_stats"]["system_cpu_usage"]
+            )
+            online_cpus = stats["cpu_stats"].get(
+                "online_cpus", len(psutil.cpu_percent(percpu=True))
+            )
 
             cpu_percent = 0.0
             if system_delta > 0 and cpu_delta > 0:
                 cpu_percent = (cpu_delta / system_delta) * online_cpus * 100.0
 
             # Extract memory usage
-            memory_usage = stats['memory_stats'].get('usage', 0)
-            memory_limit = stats['memory_stats'].get('limit', 1)
-            memory_percent = (memory_usage / memory_limit) * 100.0 if memory_limit > 0 else 0
+            memory_usage = stats["memory_stats"].get("usage", 0)
+            memory_limit = stats["memory_stats"].get("limit", 1)
+            memory_percent = (
+                (memory_usage / memory_limit) * 100.0 if memory_limit > 0 else 0
+            )
 
             # Extract I/O usage
-            block_stats = stats.get('blkio_stats', {}).get('io_service_bytes_recursive', [])
-            block_read = sum(item['value'] for item in block_stats if item['op'] == 'Read')
-            block_write = sum(item['value'] for item in block_stats if item['op'] == 'Write')
+            block_stats = stats.get("blkio_stats", {}).get(
+                "io_service_bytes_recursive", []
+            )
+            block_read = sum(
+                item["value"] for item in block_stats if item["op"] == "Read"
+            )
+            block_write = sum(
+                item["value"] for item in block_stats if item["op"] == "Write"
+            )
 
             # Extract network usage
-            networks = stats.get('networks', {})
-            network_in = sum(net_stats.get('rx_bytes', 0) for net_stats in networks.values())
-            network_out = sum(net_stats.get('tx_bytes', 0) for net_stats in networks.values())
+            networks = stats.get("networks", {})
+            network_in = sum(
+                net_stats.get("rx_bytes", 0) for net_stats in networks.values()
+            )
+            network_out = sum(
+                net_stats.get("tx_bytes", 0) for net_stats in networks.values()
+            )
 
             return {
-                'cpu_percent': cpu_percent,
-                'memory_usage_mb': memory_usage / (1024 * 1024),
-                'memory_percent': memory_percent,
-                'block_read': block_read,
-                'block_write': block_write,
-                'network_in': network_in,
-                'network_out': network_out
+                "cpu_percent": cpu_percent,
+                "memory_usage_mb": memory_usage / (1024 * 1024),
+                "memory_percent": memory_percent,
+                "block_read": block_read,
+                "block_write": block_write,
+                "network_in": network_in,
+                "network_out": network_out,
             }
         except Exception as e:
             logger.error(f"Failed to get container stats: {e}")
             return {
-                'cpu_percent': 0,
-                'memory_usage_mb': 0,
-                'memory_percent': 0,
-                'block_read': 0,
-                'block_write': 0,
-                'network_in': 0,
-                'network_out': 0
+                "cpu_percent": 0,
+                "memory_usage_mb": 0,
+                "memory_percent": 0,
+                "block_read": 0,
+                "block_write": 0,
+                "network_in": 0,
+                "network_out": 0,
             }
 
 

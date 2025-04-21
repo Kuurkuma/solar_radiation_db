@@ -4,14 +4,14 @@ from .databases import (
     MySQLHandler,
     PostgresHandler,
     ClickHouseHandler,
-    DuckDBHandler
+    DuckDBHandler,
 )
 
 __all__ = [
-    'Benchmarker',
-    'DockerDatabaseHandler',
-    'MySQLHandler',
-    'PostgresHandler',
-    'ClickHouseHandler',
-    'DuckDBHandler'
+    "Benchmarker",
+    "DockerDatabaseHandler",
+    "MySQLHandler",
+    "PostgresHandler",
+    "ClickHouseHandler",
+    "DuckDBHandler",
 ]

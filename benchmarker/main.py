@@ -1,6 +1,11 @@
 import logging
 import sys
-from bench.databases import MySQLHandler, PostgresHandler, ClickHouseHandler, DuckDBHandler
+from bench.databases import (
+    MySQLHandler,
+    PostgresHandler,
+    ClickHouseHandler,
+    DuckDBHandler,
+)
 from bench.bench import Benchmarker
 
 
@@ -20,8 +25,12 @@ if __name__ == "__main__":
     databases = {
         "mysql": MySQLHandler(name="test-mysql", port=3306, cpu_limit=2),
         "postgres": PostgresHandler(name="test-postgres", port=5432, cpu_limit=2),
-        "duckdb": DuckDBHandler(name="test-duckdb", db_file="duckdb_data.db", cpu_limit=2),
-        "clickhouse": ClickHouseHandler(name="test-clickhouse", http_port=8124, tcp_port=9001, cpu_limit=2),
+        "duckdb": DuckDBHandler(
+            name="test-duckdb", db_file="duckdb_data.db", cpu_limit=2
+        ),
+        "clickhouse": ClickHouseHandler(
+            name="test-clickhouse", http_port=8124, tcp_port=9001, cpu_limit=2
+        ),
     }
 
     benchmarker.define_database_handlers(database_handlers=databases)
@@ -35,9 +44,9 @@ if __name__ == "__main__":
     queries = [
         "SELECT COUNT(*) FROM data;",
         "SELECT * FROM data LIMIT 10;",
-        "SELECT AVG(\"SepalWidth\") FROM data GROUP BY \"Species\";",
-        "SELECT \"Species\", COUNT(*) FROM data GROUP BY \"Species\" ORDER BY COUNT(*) DESC;",
-        "SELECT * FROM data WHERE \"SepalLength\" > 5.0 ORDER BY \"PetalLength\" DESC LIMIT 20;"
+        'SELECT AVG("SepalWidth") FROM data GROUP BY "Species";',
+        'SELECT "Species", COUNT(*) FROM data GROUP BY "Species" ORDER BY COUNT(*) DESC;',
+        'SELECT * FROM data WHERE "SepalLength" > 5.0 ORDER BY "PetalLength" DESC LIMIT 20;',
     ]
 
     benchmarker.define_queries(queries=queries)
