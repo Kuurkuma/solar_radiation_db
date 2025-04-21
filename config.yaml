@@ -26,3 +26,18 @@ processing:
   chunk_size: 100000
   compression: "snappy"
   part_number_padding: 4  # Number of digits for the part number in filenames (e.g., 4 -> part_0001.parquet)
+
+
+# Configuration for batch ingesting GCS Parquet files into MotherDuck
+gcs:
+  bucket_name: "bq_migration_eth_dataset"
+  prefix: ""
+  project_id: "" # "your-gcp-project-id" or leave empty ""
+
+motherduck:
+  target_table: "eth_transactions"
+  database_name: "database_crash_test"
+
+processing:
+  num_files: 18019
+  files_per_batch: 100
