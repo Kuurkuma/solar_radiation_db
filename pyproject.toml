@@ -14,3 +14,8 @@ dependencies = [
     "pyarrow>=19.0.1",
     "pyyaml>=6.0.2",
 ]
+
+[tool.uv.workspace]
+members = [
+    "benchmarker",
+]
