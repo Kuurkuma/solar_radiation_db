@@ -1,138 +1,81 @@
 import duckdb
-from google.cloud import storage
 import pyarrow.fs as fs
+import yaml
 import os
-import math
 import time
-import yaml 
+import math
 
-# --- Configuration Loading ---
-CONFIG_FILE = 'config.yaml'
-
-with open('config.yaml', 'r') as f:
+# --- Load config ---
+with open("config.yaml", "r") as f:
     config = yaml.safe_load(f)
 
-# --- Config values ---
-gcs_bucket = config["gcs"]["bucket_name"]
-gcs_prefix = config["gcs"]["prefix"]
-motherduck_db = config["motherduck"]["database_name"]
-motherduck_table = config["motherduck"]["target_table"]
-batch_size = config["processing"]["files_per_batch"]
+BUCKET = config["gcs"]["bucket_name"]
+PREFIX = config["gcs"]["prefix"]
+DB_NAME = config["motherduck"]["database_name"]
+TABLE = config["motherduck"]["target_table"]
+BATCH_SIZE = config["processing"]["files_per_batch"]
+NUM_FILES = config["processing"]["num_files"]
 
-# --- Task Functions ---
-def list_bucket_files(gcs_bucket, gcs_prefix):
-    """
-    Lists all Parquet files in a GCS bucket, given a prefix, into a list.
-    """
-    gcs = fs.GcsFileSystem() 
-
-    # --- LIST PARQUET FILES ---
-    print(f"Listing Parquet files in {gcs_bucket}/{gcs_prefix}...")
-    parquet_files = []
-    try:
-        selector = fs.FileSelector(gcs_bucket + "/" + gcs_prefix.strip('/'), recursive=True)
-        files = gcs.get_file_info(selector)
-        parquet_files = [
-            f"gs://{f.path}" 
-            for f in files if f.is_file and f.path.endswith(".parquet")
-        ]
-        print(f"Found {len(parquet_files)} Parquet files.")
-    except Exception as e:
-        print(f"ERROR: Failed to list Parquet files: {e}")
+# --- List parquet files from GCS ---
+def list_parquet_files(bucket, prefix):
+    gcs = fs.GcsFileSystem()
+    selector = fs.FileSelector(f"{bucket}/{prefix}", recursive=True)
+    files = gcs.get_file_info(selector)
+    print (f"Found {len(files)} Parquet files.")
+    return [
+        f"gs://{f.path}" for f in files
+        if f.is_file and f.path.endswith(".parquet")
+    ]
     
-    return parquet_files
-
-def connect_to_motherduck():
-    """Connects to MotherDuck and prepares the connection."""
+# --- Connect to MotherDuck ---
+def connect():
     try:
-        con = duckdb.connect(f"md:{motherduck_db}")
-        con.execute("INSTALL httpfs;")
-        con.execute("LOAD httpfs;")
-        print(f"✅ Connected to MotherDuck.{con}")
+        con = duckdb.connect(f"md:{DB_NAME}")
+        con.execute("INSTALL httpfs; LOAD httpfs;")
+        print("✅ Connected to MotherDuck")
+        return con
     except Exception as e:
-        raise ConnectionError(f"Failed to connect to MotherDuck: {e}")
-    return con
-    
+        raise RuntimeError(f"❌ Connection failed: {e}")
 
-def execute_copy_batch(connection, target_table, batch_files):
-    """Executes a single COPY command for a batch of files."""
- 
-    # Create the SQL list string: ('file1', 'file2', ...)
-    file_list_sql = "(" + ", ".join([f"'{f}'" for f in batch_files]) + ")"
-    copy_sql = f"COPY {target_table} FROM {file_list_sql} (FORMAT PARQUET);"
+# --- Execute COPY FROM for a batch of files ---# --- Execute COPY FROM for a batch of files ---
+def copy_batch(con, table, batch):
+    if not batch:
+        print("Warning: copy_batch called with empty list. Skipping.")
+        return True
+
+    files_sql = "[" + ", ".join([f"'{f}'" for f in batch]) + "]"
+    copy_query = f"COPY {table} FROM read_parquet({files_sql}) (FORMAT PARQUET);"             
 
     try:
-        print(f"Executing COPY for {len(batch_files)} files...")
-        connection.execute(copy_sql)
-        return True # Indicate success
+        con.execute(copy_query)
+        return True
     except Exception as e:
-        print(f"ERROR executing COPY command: {e}")
-        # Print first file for context without overwhelming logs
-        print(f"Failed SQL roughly: COPY {target_table} FROM ('{batch_files[0]}', ...) (FORMAT PARQUET);")
-        return False # Indicate failure
+        # The error message indicates the SQL syntax was wrong *before* even trying to access files
+        print(f"❌ COPY failed: {e}") # The Parser Error happens here
+        # Logging batch[0] is still misleading for a syntax error
+        print(f"❌ Review generated SQL syntax (first 200 chars): {copy_query[:200]}")
+        return False
 
-# --- Main Orchestration Logic ---
+# --- Main orchestration ---
 def main():
-    """Main function to orchestrate the batch ingestion process."""
-    
-    motherduck_token = os.environ.get("motherduck_token")
-    
-    # 1. List Parquet files from bucket
-    bucket_files = list_bucket_files(gcs_bucket, gcs_prefix)
-    
-    # 2. Connect to MotherDuck
-    connection = connect_to_motherduck()
-    if connection is None:
-        print("Exiting due to MotherDuck connection error.")
-        exit(1)
+    #os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = config["gcs"]["credentials"]
+    con = connect()
+    files = list_parquet_files(BUCKET, PREFIX)[:NUM_FILES]
+    total_batches = math.ceil(len(files) / BATCH_SIZE)
 
-    # 3. Process batches
-    files_per_batch = config['processing']['files_per_batch']
-    target_table = config['motherduck']['target_table']
-    num_files = config['processing']['num_files']
-    
-    num_batches = math.ceil(num_files / files_per_batch)
+    print(f"🚀 Ingesting {len(files)} files into {TABLE} in {total_batches} batches...")
+    start = time.time()
 
-    print(f"\nStarting ingestion into table '{target_table}' in {num_batches} batches of up to {files_per_batch} files each.")
-    total_start_time = time.time()
-    batches_succeeded = 0
-    batches_failed = 0
+    for i in range(total_batches):
+        batch = files[i * BATCH_SIZE: (i + 1) * BATCH_SIZE]
+        print(f"\n Batch {i + 1}/{total_batches}: {len(batch)} files")
 
-    try: 
-        for i in range(num_batches):
-            batch_start_time = time.time()
-            start_index = i * files_per_batch
-            end_index = min((i + 1) * files_per_batch, num_files)
-            batch_files = bucket_files[i:i + files_per_batch]
+        if not copy_batch(con, TABLE, batch):
+            print("⛔ Aborting pipeline due to COPY failure.")
+            break
 
-            print(f"\n--- Processing Batch {i+1}/{num_batches} ---")
-            success = execute_copy_batch(connection, target_table, batch_files)
-
-            if success:
-                batches_succeeded += 1
-                batch_duration = time.time() - batch_start_time
-                print(f"Batch {i+1} completed successfully in {batch_duration:.2f} seconds.")
-            else:
-                batches_failed += 1
-                print(f"Batch {i+1} failed. Stopping script.")
-                break # Stop processing further batches on failure
-
-    finally: # Ensure connection is closed even if errors occur
-        if connection:
-            connection.close()
-            print("\nMotherDuck connection closed.")
-
-    # 4. Final Summary
-    total_duration = time.time() - total_start_time
-    print("\n--- Ingestion Summary ---")
-    print(f"Batches Attempted: {batches_succeeded + batches_failed}/{num_batches}")
-    print(f"Batches Succeeded: {batches_succeeded}")
-    print(f"Batches Failed:    {batches_failed}")
-    print(f"Total time: {total_duration:.2f} seconds.")
-
-    if batches_failed > 0:
-        exit(1) # Exit with error code if any batch failed
-
+    con.close()
+    print(f"\n✅ Done in {time.time() - start:.2f}s")
 
 if __name__ == "__main__":
     main()

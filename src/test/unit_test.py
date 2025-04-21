@@ -2,7 +2,7 @@ from google.cloud import storage
 import pyarrow.fs as fs
 import yaml 
 
-from src.gcs_to_motherduck import list_bucket_files, connect_to_motherduck
+from src.gcs_to_motherduck import list_bucket_files, connect_to_motherduck, copy_batch
 
 # --- Configuration Loading ---
 CONFIG_FILE = 'config.yaml'
@@ -19,6 +19,7 @@ print(f"Running unit test for gcs_to_motherduck.py: {list_bucket_files}...")
 def main():
     #list_bucket_files(gcs_bucket, gcs_prefix)
     connect_to_motherduck()
+    # copy_batch(con, table, batch)
     
 if __name__ == "__main__": 
     main()
