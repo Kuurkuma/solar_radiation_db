@@ -8,6 +8,10 @@ from sqlalchemy import create_engine, text
 from sqlalchemy.exc import SQLAlchemyError
 import pandas as pd
 import psutil
+import sqlglot
+
+
+
 
 logging.basicConfig(
     level=logging.INFO,
@@ -18,7 +22,7 @@ logging.basicConfig(
 
 logger = logging.getLogger("databases")
 
-
+#todo make pydantic data class object
 class QueryMetrics:
     """
     Represents metrics related to the execution of a database query.
@@ -54,8 +58,9 @@ class QueryMetrics:
     :type result_size_mb: int
     """
 
-    def __init__(self, query: str, database_type: str):
+    def __init__(self, query: str, original_query: str, database_type: str):
         self.query = query
+        self.original_query = original_query
         self.database_type = database_type
         self.execution_time_ms = 0
         self.cpu_usage_percent = 0
@@ -67,11 +72,13 @@ class QueryMetrics:
         self.network_out_mb = 0
         self.result_rows = 0
         self.result_size_mb = 0
+        self.failed = False
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert metrics to dictionary."""
         return {
             "query": self.query,
+            "original_query": self.original_query,
             "database_type": self.database_type,
             "execution_time_ms": self.execution_time_ms,
             "cpu_usage_percent": self.cpu_usage_percent,
@@ -83,10 +90,11 @@ class QueryMetrics:
             "network_out_mb": self.network_out_mb,
             "result_rows": self.result_rows,
             "result_size_mb": self.result_size_mb,
+            "failed": self.failed,
         }
 
 
-class DockerDatabaseHandler:
+class DockerDatabaseHandler(object):
     """
     Manages the lifecycle and metrics of a Docker-based database container.
 
@@ -139,6 +147,7 @@ class DockerDatabaseHandler:
         volumes: List[str] = None,
         cpu_limit: float = 1.0,
         memory_limit: str = "2g",
+        sql_dialect: str = "postgres",
     ):
         """
         Initializes a container instance with specified configurations for image,
@@ -171,7 +180,7 @@ class DockerDatabaseHandler:
         self.memory_limit = memory_limit
         self.container: Optional[Container] = None
         self.client = docker.from_env()
-
+        self.sql_dialect = sql_dialect
         # Database connection properties
         self.host = "localhost"
         self.username = None
@@ -337,7 +346,12 @@ class DockerDatabaseHandler:
         if not self.is_running():
             raise RuntimeError(f"Container {self.name} is not running")
 
-        metrics = QueryMetrics(query=query, database_type=self.__class__.__name__)
+
+        transpiled_query = sqlglot.transpile(query, read="postgres", write=self.sql_dialect)[0]
+        logger.info(f"Transpiled query: from {query} to {transpiled_query}")
+
+        metrics = QueryMetrics(query=transpiled_query, original_query=query, database_type=self.__class__.__name__)
+        result = pd.DataFrame()
 
         # Initialize stats collection
         self.container.reload()
@@ -357,7 +371,9 @@ class DockerDatabaseHandler:
                 )
         except Exception as e:
             logger.error(f"Query execution failed: {e}")
-            raise
+            metrics.failed = True
+            # Create an empty DataFrame for the result
+            result = pd.DataFrame()
         finally:
             # Calculate execution time
             end_time = time.time()
@@ -386,8 +402,9 @@ class DockerDatabaseHandler:
                 curr_stats["network_out"] - prev_stats["network_out"]
             ) / (1024 * 1024)
 
+        status = "FAILED" if metrics.failed else "executed"
         logger.info(
-            f"Query executed in {metrics.execution_time_ms:.2f}ms, "
+            f"Query {status} in {metrics.execution_time_ms:.2f}ms, "
             + f"CPU: {metrics.cpu_usage_percent:.2f}%, "
             + f"Memory: {metrics.memory_usage_mb:.2f}MB ({metrics.memory_usage_percent:.2f}%)"
         )
@@ -517,6 +534,7 @@ class MySQLHandler(DockerDatabaseHandler):
         tag: str = "8.0",
         cpu_limit: float = 1.0,
         memory_limit: str = "2g",
+        sql_dialect: str = "mysql",
     ):
         """
         Initialize an instance of a MySQL container with customizable settings for database
@@ -560,6 +578,7 @@ class MySQLHandler(DockerDatabaseHandler):
             environment=environment,
             cpu_limit=cpu_limit,
             memory_limit=memory_limit,
+            sql_dialect=sql_dialect
         )
 
         # Set connection properties
@@ -636,6 +655,7 @@ class PostgresHandler(DockerDatabaseHandler):
         tag: str = "17",
         cpu_limit: float = 1.0,
         memory_limit: str = "2g",
+        sql_dialect: str = "postgres",
     ):
         """
         Initializes a PostgreSQL database container with customizable configurations. The
@@ -671,6 +691,7 @@ class PostgresHandler(DockerDatabaseHandler):
             environment=environment,
             cpu_limit=cpu_limit,
             memory_limit=memory_limit,
+            sql_dialect=sql_dialect,
         )
 
         # Set connection properties
@@ -758,6 +779,7 @@ class ClickHouseHandler(DockerDatabaseHandler):
         tag: str = "latest",
         cpu_limit: float = 2.0,
         memory_limit: str = "4g",
+        sql_dialect: str = "clickhouse"
     ):
         """
         Initializes a ClickHouse server configuration and deploys a containerized instance
@@ -814,6 +836,7 @@ class ClickHouseHandler(DockerDatabaseHandler):
             environment=environment,
             cpu_limit=cpu_limit,
             memory_limit=memory_limit,
+            sql_dialect=sql_dialect,
         )
 
         # Set connection properties
@@ -900,6 +923,7 @@ class DuckDBHandler(DockerDatabaseHandler):
         tag: str = "3.11-slim",  # Using Python image for DuckDB
         cpu_limit: float = 1.0,
         memory_limit: str = "1g",
+        sql_dialect: str = "DuckDB",
     ):
         """
         Initialize a class instance that configures and manages a containerized DuckDB
@@ -929,6 +953,7 @@ class DuckDBHandler(DockerDatabaseHandler):
             volumes=None,  # No volumes
             cpu_limit=cpu_limit,
             memory_limit=memory_limit,
+            sql_dialect=sql_dialect
         )
 
         self.db_file = db_file
@@ -1018,80 +1043,7 @@ class DuckDBHandler(DockerDatabaseHandler):
         return f"duckdb:///{self.database_path}"
 
 
-# Example usage
-if __name__ == "__main__":
-    # Example for MySQL
 
-    databases = {
-        "mysql": MySQLHandler(name="test-mysql", port=3306, cpu_limit=2),
-        "postgres": PostgresHandler(name="test-postgres", port=5432, cpu_limit=2),
-        "duckdb": DuckDBHandler(
-            name="test-duckdb", db_file="duckdb_data.db", cpu_limit=2
-        ),
-        "clickhouse": ClickHouseHandler(
-            name="test-clickhouse", http_port=8124, tcp_port=9001, cpu_limit=2
-        ),
-    }
 
-    for database_name, database_handler in databases.items():
-        logger.info(f"testing {database_name}")
 
-        try:
-            database_handler.start()
-            logger.info(
-                f"{database_name} Connection String: {database_handler.sqlalchemy_connection_string}"
-            )
-            logger.info(f"{database_name} is running!")
-            # Do your database operations here
 
-            try:
-                # Example SQLAlchemy usage
-                engine = create_engine(database_handler.sqlalchemy_connection_string)
-                with engine.connect() as conn:
-
-                    if database_name != "clickhouse":
-                        # Create a sample table
-                        conn.execute(
-                            text(
-                                "CREATE TABLE IF NOT EXISTS test_table (id INT, name VARCHAR(255))"
-                            )
-                        )
-                    else:  # For ClickHouse
-                        conn.execute(
-                            text(
-                                """
-                            CREATE TABLE IF NOT EXISTS test_table
-                            (
-                                id
-                                UInt32,
-                                name
-                                String
-                            ) ENGINE = MergeTree
-                            (
-                            )
-                                ORDER BY id
-                            """
-                            )
-                        )
-
-                    # Insert sample data
-                    conn.execute(
-                        text(
-                            "INSERT INTO test_table (id, name) VALUES (1, 'Test Record')"
-                        )
-                    )
-
-                    # Query the data
-                    result = conn.execute(text("SELECT * FROM test_table"))
-                    logger.info("Sample query result:", result.fetchall())
-
-                    # Clean up
-                    conn.execute(text("DROP TABLE test_table"))
-
-                logger.info("SQLAlchemy connection test passed!")
-            except SQLAlchemyError as e:
-                logger.error(f"SQLAlchemy connection test failed with error: {e}")
-        except Exception as e:
-            logger.error(f"Could startup handler {database_name}: with error {e}")
-        finally:
-            database_handler.stop(remove=True)
