@@ -2,7 +2,7 @@ import logging
 import sys
 import pandas as pd
 from sqlalchemy import create_engine, text
-from .databases import ClickHouseHandler
+from .databases import ClickHouseHandler, QueryMetrics
 
 logging.basicConfig(
     level=logging.INFO,
@@ -82,7 +82,9 @@ class Benchmarker(object):
 
         :return: None
         """
-        self.data = pd.read_csv(url, header=0).convert_dtypes()
+        df = pd.read_csv(url, header=0).convert_dtypes()
+        df.columns = [''.join(char for char in s.lower() if char.islower()) for s in df.columns]
+        self.data = df
 
     def define_queries(self, queries: list):
         """
@@ -128,15 +130,23 @@ class Benchmarker(object):
                     # Run each query and collect metrics
                     for query in self.queries:
                         logger.info(f"Running query: {query[:60]}...")
-                        result, metrics = database_handler.run_query_with_metrics(query)
-                        all_metrics.append(metrics.to_dict())
-
-                        # Log some sample results
-                        if not result.empty:
-                            sample_size = min(5, len(result))
-                            logger.info(
-                                f"Sample result ({len(result)} rows total):\n{result.head(sample_size)}"
-                            )
+                        try:
+                            result, metrics = database_handler.run_query_with_metrics(query)
+                            all_metrics.append(metrics.to_dict())
+                    
+                            # Log some sample results
+                            if not result.empty:
+                                sample_size = min(5, len(result))
+                                logger.info(
+                                    f"Sample result ({len(result)} rows total):\n{result.head(sample_size)}"
+                                )
+                        except Exception as e:
+                            logger.error(f"Error running query '{query[:60]}...': {e}")
+                            # Create a failed metrics entry
+                            failed_metrics = QueryMetrics(query=query, original_query=query, 
+                                                        database_type=database_handler.__class__.__name__)
+                            failed_metrics.failed = True
+                            all_metrics.append(failed_metrics.to_dict())
 
             except Exception as e:
                 logger.error(f"Error benchmarking {database_name}: {e}")
@@ -151,6 +161,54 @@ class Benchmarker(object):
         self._summarize_results()
 
         return self.metrics_df
+
+    def _create_clickhouse_table(self, conn, table_name='data'):
+        """
+        Create a ClickHouse table with correct column types
+
+        Args:
+            conn: SQLAlchemy connection
+            table_name (str, optional): Name of the table. Defaults to 'data'.
+        """
+
+        type_mapping = {
+            # Integer types
+            'int8': 'Int8',
+            'int16': 'Int16',
+            'int32': 'Int32',
+            'int64': 'Int64',
+            'uint8': 'UInt8',
+            'uint16': 'UInt16',
+            'uint32': 'UInt32',
+            'uint64': 'UInt64',
+
+            # Floating point types
+            'Float32': 'Float32',
+            'Float64': 'Float64',
+
+            # String types
+            'object': 'String',
+            'string': 'String',
+
+            # Date and datetime types
+            'datetime64[ns]': 'DateTime',
+            'datetime64': 'DateTime',
+            'date': 'Date',
+        }
+        columns_list = []
+        for column_name, column_data in self.data.items():
+            columns_list.append(f"`{column_name}` {type_mapping[str(column_data.dtype)]}")
+
+
+        logger.info(f"Creating ClickHouse table '{table_name}' with columns: {columns_list}")
+        create_table_sql = f"""
+            CREATE TABLE IF NOT EXISTS {table_name} (
+                {", ".join(columns_list)}
+            ) ENGINE = Memory
+        """
+        logger.info(f"SQL: {create_table_sql}")
+        # Execute table creation
+        conn.execute(text(create_table_sql))
 
     def _load_data_to_database(self, database_handler, conn):
         """
@@ -175,20 +233,8 @@ class Benchmarker(object):
 
         # Special handling for ClickHouse which requires an engine definition
         if isinstance(database_handler, ClickHouseHandler):
-            # Create table with engine before loading data
-            columns = ", ".join(
-                [
-                    f"`{col}` {self._get_clickhouse_type(self.data[col])}"
-                    for col in self.data.columns
-                ]
-            )
-            create_table_sql = f"""
-                CREATE TABLE IF NOT EXISTS data (
-                    {columns}
-                ) ENGINE = MergeTree() ORDER BY `{self.data.columns[0]}`
-            """
-            conn.execute(text(create_table_sql))
 
+            self._create_clickhouse_table(conn=conn, table_name='data')
             # Now we can load the data
             self.data.to_sql(con=conn, name="data", if_exists="append", index=False)
         else:
@@ -219,27 +265,50 @@ class Benchmarker(object):
 
         logger.info("\n===== BENCHMARK SUMMARY =====")
 
-        # Group by database type and calculate averages
-        summary = self.metrics_df.groupby("database_type").agg(
-            {
-                "execution_time_ms": ["mean", "min", "max"],
-                "cpu_usage_percent": "mean",
-                "memory_usage_mb": "mean",
-                "disk_read_mb": "sum",
-                "disk_write_mb": "sum",
-            }
-        )
-
-        logger.info(f"\nPerformance Summary:\n{summary}")
-
-        # Find the fastest database for each query
-        for query in self.metrics_df["query"].unique():
-            query_df = self.metrics_df[self.metrics_df["query"] == query]
-            fastest = query_df.loc[query_df["execution_time_ms"].idxmin()]
-            logger.info(
-                f"\nFastest for query '{query[:50]}...': {fastest['database_type']} "
-                + f"({fastest['execution_time_ms']:.2f}ms)"
+        # Count failed queries by database type
+        if 'failed' in self.metrics_df.columns:
+            failed_counts = self.metrics_df.groupby(["database_type", "failed"]).size().unstack(fill_value=0)
+            if 1 in failed_counts.columns or True in failed_counts.columns:
+                failed_col = 1 if 1 in failed_counts.columns else True
+                logger.info(f"\nFailed Queries by Database Type:\n{failed_counts[failed_col]}")
+    
+        # Group by database type and calculate averages (only for successful queries)
+        if 'failed' in self.metrics_df.columns:
+            successful_metrics = self.metrics_df[~self.metrics_df['failed']]
+        else:
+            successful_metrics = self.metrics_df
+        
+        if not successful_metrics.empty:
+            summary = successful_metrics.groupby("database_type").agg(
+                {
+                    "execution_time_ms": ["mean", "min", "max"],
+                    "cpu_usage_percent": "mean",
+                    "memory_usage_mb": "mean",
+                    "disk_read_mb": "sum",
+                    "disk_write_mb": "sum",
+                }
             )
+    
+            logger.info(f"\nPerformance Summary:\n{summary}")
+    
+            # Find the fastest database for each query
+            for query in successful_metrics["query"].unique():
+                query_df = successful_metrics[successful_metrics["query"] == query]
+                if not query_df.empty:
+                    fastest = query_df.loc[query_df["execution_time_ms"].idxmin()]
+                    logger.info(
+                        f"\nFastest for query '{query[:50]}...': {fastest['database_type']} "
+                        + f"({fastest['execution_time_ms']:.2f}ms)"
+                    )
+        
+        # Report queries that failed for all database types
+        if 'failed' in self.metrics_df.columns:
+            failed_queries = self.metrics_df.groupby('original_query')['failed'].sum()
+            completely_failed = failed_queries[failed_queries == len(self.database_handlers)]
+            if not completely_failed.empty:
+                logger.info("\nQueries that failed across all database types:")
+                for query in completely_failed.index:
+                    logger.info(f"- {query}")
 
     def save_metrics_to_csv(self, filename: str = "benchmark_results.csv"):
         """
