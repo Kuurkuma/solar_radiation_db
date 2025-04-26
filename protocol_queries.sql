@@ -32,12 +32,21 @@ WHERE time >= '2023-01-01' AND time < '2024-01-01'
 GROUP BY EXTRACT(YEAR FROM time)
 ORDER BY EXTRACT(YEAR FROM time);
 
+-- JOIN Queries
+-- Simple Self-Join to Calculate Power Change
+SELECT
+    t1.time,     
+    t1.P as power_output,  
+    t2.P as previous_power, 
+    t1.P - t2.P as power_change
+FROM data t1
+JOIN data t2 ON t1.time = t2.time + INTERVAL '1 hour';
 
 -- WINDOW FUNCTION Queries
 -- Power output changes
 SELECT
     d.time,
-    P as current_P,
+    P as power_output,
     LAG(P) OVER (ORDER BY time) as previous_P,
     P - LAG(P) OVER (ORDER BY time) as power_change
 FROM data as d;
@@ -45,7 +54,7 @@ FROM data as d;
 -- Running total
 SELECT
     time,
-    P,
+    P as power_output,
     SUM(P) OVER (ORDER BY time) as running_total
 FROM data
 ORDER BY time;

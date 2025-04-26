@@ -7,7 +7,6 @@ from bench.databases import (
     DuckDBHandler,
 )
 from bench.bench import Benchmarker
-from bench.queries import time_series_queries, get_benchmark_queries
 from bench.query_parser import load_queries_split_by_semicolon
 
 
@@ -38,14 +37,15 @@ if __name__ == "__main__":
     benchmarker.define_database_handlers(database_handlers=databases)
 
     # Load the iris dataset
-    benchmarker.get_data(
-       # url="https://gist.githubusercontent.com/netj/8836201/raw/6f9306ad21398ea43cba4f7d537619d0e07d5ae3/iris.csv"
-        '/Users/macbook/Development/database_crash_test/data/no_headers_brandenburger_gate_seriescalc.csv'
-    )
+    #benchmarker.get_data(
+    #   url="https://gist.githubusercontent.com/netj/8836201/raw/6f9306ad21398ea43cba4f7d537619d0e07d5ae3/iris.csv"
+    #   )
+    
+    # Load local time series dataset
+    benchmarker.get_local_csv('data/no_headers_brandenburger_gate_seriescalc.csv')
  
     # Load the queries to be executed
     queries =load_queries_split_by_semicolon('/Users/macbook/Development/database_crash_test/protocol_queries.sql')
-    print (queries)
     
     # Define the queries to be executed
     benchmarker.define_queries(queries=queries)

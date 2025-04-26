@@ -1,36 +1,7 @@
 CREATE TABLE IF NOT EXISTS data AS SELECT * FROM read_csv('/Users/macbook/Development/database_crash_test/data/no_headers_brandenburger_gate_seriescalc.csv')
 ;
 
-
--- JOIN Queries
--- Simple Self-Join to Calculate Power Change
-SELECT
-    t1.time,     
-    t1.P as current_P,  
-    t2.P as previous_P, 
-    t1.P - t2.P as power_change
-FROM data t1
-JOIN data t2 ON t1.time = t2.time + INTERVAL '1 second';
-
-
-SELECT
-    t1.time,     
-    t1.P as current_P,  
-    t2.P as previous_P, 
-    t1.P - t2.P as power_change
-FROM data t1
-JOIN data t2 ON t1.time = t2.time + INTERVAL '1 second';
-
-
--- 15. Power Output Change from Previous Reading
-SELECT
-    time,
-    P,
-    P - LAG(P, 1, 0) OVER (ORDER BY time) as power_change -- LAG gets value from previous row (offset 1), default 0 if no previous
-FROM data
-ORDER BY time;
-
--- 16. Moving Average of Power Output (e.g., 10-row moving average)
+-- 16. Moving Average of Power Output 
 SELECT
     time,
     P,
@@ -38,21 +9,17 @@ SELECT
 FROM data
 ORDER BY time;
 
--- 17. Rank Data within Partitions (e.g., Rank power output within each category)
+-- 17. Rank Data within Partitions
 SELECT
-    time,
-    category,
-    P,
-    RANK() OVER (PARTITION BY category ORDER BY P DESC) as power_rank_in_category -- RANK assigns a rank within each category
+    DAY(time) as day,
+    P as power_output,
+    RANK() OVER (PARTITION BY P ORDER BY P ASC) as power_rank_in_category
 FROM data
-ORDER BY category, time; -- Ordering results is separate from window function ordering
+ORDER BY power_rank_in_category; -- Ordering results is separate from window function ordering
 
 
 -- DDL Queries (Data Definition Language)
 -- Note: DDL syntax for complex operations like partitioning is HIGHLY database-specific.
--- Including these directly in a generic list to be run on *all* databases is problematic.
--- You should generate these dynamically based on the database type, as shown in the previous response.
--- The examples below show the *intended operation* but the syntax will vary.
 
 -- 18. Create a new table with specific columns and types
 -- This tests schema creation performance.

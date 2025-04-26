@@ -83,6 +83,17 @@ class Benchmarker(object):
         :return: None
         """
         self.data = pd.read_csv(url, header=0).convert_dtypes()
+        
+    def get_local_csv(self, path:str):
+        """
+        Reads a local CSV file and stores it in the 'data' attribute of the class.
+
+        :param path: The path to the local CSV file to be read.
+        :type path: str
+
+        :return: None
+        """
+        self.data = pd.read_csv(path).convert_dtypes()
 
     def define_queries(self, queries: list):
         """
