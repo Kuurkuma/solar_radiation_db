@@ -7,6 +7,7 @@ from bench.databases import (
     DuckDBHandler,
 )
 from bench.bench import Benchmarker
+from bench.query_parser import load_queries_split_by_semicolon
 
 
 logging.basicConfig(
@@ -36,19 +37,17 @@ if __name__ == "__main__":
     benchmarker.define_database_handlers(database_handlers=databases)
 
     # Load the iris dataset
-    benchmarker.get_data(
-        url="https://gist.githubusercontent.com/netj/8836201/raw/6f9306ad21398ea43cba4f7d537619d0e07d5ae3/iris.csv"
-    )
-
-    # Define a set of test queries with varying complexity
-    queries = [
-        "SELECT COUNT(*) FROM data;",
-        "SELECT * FROM data LIMIT 10;",
-        "SELECT AVG(sepalwidth) FROM data GROUP BY variety;",
-        "SELECT variety, COUNT(*) FROM data GROUP BY variety ORDER BY COUNT(*) DESC;",
-        "SELECT * FROM data WHERE sepallength > 5.0 ORDER BY petallength DESC LIMIT 20;",
-    ]
-
+    #benchmarker.get_data(
+    #   url="https://gist.githubusercontent.com/netj/8836201/raw/6f9306ad21398ea43cba4f7d537619d0e07d5ae3/iris.csv"
+    #   )
+    
+    # Load local time series dataset
+    benchmarker.get_local_csv('data/no_headers_brandenburger_gate_seriescalc.csv')
+ 
+    # Load the queries to be executed
+    queries =load_queries_split_by_semicolon('/Users/macbook/Development/database_crash_test/protocol_queries.sql')
+    
+    # Define the queries to be executed
     benchmarker.define_queries(queries=queries)
 
     # Run the benchmark
