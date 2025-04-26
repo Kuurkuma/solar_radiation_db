@@ -23,13 +23,13 @@ if __name__ == "__main__":
     benchmarker = Benchmarker()
 
     databases = {
-        "mysql": MySQLHandler(name="test-mysql", port=3306, cpu_limit=2),
-        "postgres": PostgresHandler(name="test-postgres", port=5432, cpu_limit=2),
+        "mysql": MySQLHandler(name="test-mysql", port=3306, cpu_limit=2, memory_limit="4G", sql_dialect="mysql"),
+        "postgres": PostgresHandler(name="test-postgres", port=5432, cpu_limit=2, sql_dialect="postgres"),
         "duckdb": DuckDBHandler(
-            name="test-duckdb", db_file="duckdb_data.db", cpu_limit=2
+            name="test-duckdb", db_file="duckdb_data.db", cpu_limit=2, sql_dialect="duckdb"
         ),
         "clickhouse": ClickHouseHandler(
-            name="test-clickhouse", http_port=8124, tcp_port=9001, cpu_limit=2
+            name="test-clickhouse", http_port=8124, tcp_port=9001, cpu_limit=2, sql_dialect="clickhouse"
         ),
     }
 
@@ -44,9 +44,9 @@ if __name__ == "__main__":
     queries = [
         "SELECT COUNT(*) FROM data;",
         "SELECT * FROM data LIMIT 10;",
-        'SELECT AVG("SepalWidth") FROM data GROUP BY "Species";',
-        'SELECT "Species", COUNT(*) FROM data GROUP BY "Species" ORDER BY COUNT(*) DESC;',
-        'SELECT * FROM data WHERE "SepalLength" > 5.0 ORDER BY "PetalLength" DESC LIMIT 20;',
+        "SELECT AVG(sepalwidth) FROM data GROUP BY variety;",
+        "SELECT variety, COUNT(*) FROM data GROUP BY variety ORDER BY COUNT(*) DESC;",
+        "SELECT * FROM data WHERE sepallength > 5.0 ORDER BY petallength DESC LIMIT 20;",
     ]
 
     benchmarker.define_queries(queries=queries)

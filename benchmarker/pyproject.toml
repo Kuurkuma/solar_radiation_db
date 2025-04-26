@@ -9,12 +9,15 @@ dependencies = [
     "cryptography>=44.0.2",
     "docker>=7.1.0",
     "duckdb-engine>=0.17.0",
+    "findspark>=2.0.1",
     "pandas>=2.2.3",
     "psutil>=7.0.0",
     "psycopg2-binary>=2.9.10",
     "pymysql>=1.1.1",
+    "pyspark>=3.5.5",
     "requests>=2.32.3",
     "sqlalchemy>=2.0.40",
+    "sqlglot[rs]>=26.16.0",
 ]
 
 [dependency-groups]
