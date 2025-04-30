@@ -40,7 +40,7 @@ SELECT
     t2.P as previous_power, 
     t1.P - t2.P as power_change
 FROM data t1
-JOIN data t2 ON t1.time = t2.time + INTERVAL '1 hour';
+JOIN data t2 ON t1.time = t2.time; -- The INTERVAL creates an error in mysql
 
 -- WINDOW FUNCTION Queries
 -- Power output changes

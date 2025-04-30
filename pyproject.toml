@@ -13,6 +13,7 @@ dependencies = [
     "pandas>=2.2.3",
     "psycopg2>=2.9.10",
     "pyarrow>=19.0.1",
+    "pydantic>=2.11.4",
     "pymysql>=1.1.1",
     "pyyaml>=6.0.2",
     "sqlalchemy>=2.0.40",

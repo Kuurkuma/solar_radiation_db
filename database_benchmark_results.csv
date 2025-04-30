@@ -1,0 +1,55 @@
+query,original_query,database_type,execution_time_ms,cpu_usage_percent,memory_usage_mb,memory_usage_percent,disk_read_mb,disk_write_mb,network_in_mb,network_out_mb,result_rows,result_size_mb,failed
+/* SELECT Queries */ /* Basic Select with Limit */ SELECT * FROM data LIMIT 100,"-- SELECT Queries
+-- Basic Select with Limit
+SELECT * FROM data LIMIT 100",MySQLHandler,21.18682861328125,6.392546583850931,620.11328125,15.139484405517578,0.0,0.0,0.0015840530395507812,0.006682395935058594,100,0.012714385986328125,False
+/* Basic Count */ SELECT COUNT(*) FROM data,"-- Basic Count
+SELECT COUNT(*) FROM data",MySQLHandler,32.68289566040039,1.09127950310559,636.62109375,15.54250717163086,0.0,0.0,0.0014896392822265625,0.0016908645629882812,1,0.000133514404296875,False
+/* Select with Simple Date Range Filter */ SELECT * FROM data WHERE time >= '2023-01-01' AND time < '2024-01-01',"-- Select with Simple Date Range Filter 
+SELECT * FROM data WHERE time >= '2023-01-01' AND time < '2024-01-01'",MySQLHandler,190.02985954284668,1.0006459627329192,646.12109375,15.77444076538086,0.0,0.0,0.003696441650390625,0.4384126663208008,8760,1.1028785705566406,False
+/* Select with Multiple Filters (Date Range and Category) */ SELECT * FROM data WHERE time >= '2023-01-01' AND time < '2024-01-01' AND P > 0,"-- Select with Multiple Filters (Date Range and Category)
+SELECT * FROM data WHERE time >= '2023-01-01' AND time < '2024-01-01' AND P > 0",MySQLHandler,149.4619846343994,1.2065671641791045,646.37109375,15.78054428100586,0.0,0.0,0.0027151107788085938,0.23144149780273438,4097,0.5158767700195312,False
+"/* Select with ORDER BY and Limit */ SELECT * FROM data ORDER BY CASE WHEN P IS NULL THEN 1 ELSE 0 END DESC, P DESC LIMIT 50","-- Select with ORDER BY and Limit
+SELECT * FROM data ORDER BY P DESC LIMIT 50",MySQLHandler,122.47204780578613,0.9744458281444582,646.9609375,15.794944763183594,0.0,0.0,0.0015878677368164062,0.005206108093261719,50,0.006420135498046875,False
+"/* Get top 50 rows by power output */ /* AGGREGATE Queries */ /* Basic Aggregates */ SELECT AVG(P) AS avg_power_output, MAX(P) AS max_power_output, MIN(P) AS min_power_output FROM data","-- Get top 50 rows by power output
+
+-- AGGREGATE Queries 
+-- Basic Aggregates
+SELECT AVG(P) as avg_power_output, MAX(P) as max_power_output, MIN(P) as min_power_output FROM data",MySQLHandler,80.45578002929688,0.960497512437811,647.21875,15.801239013671875,0.0,0.0,0.0016202926635742188,0.0019245147705078125,1,0.000148773193359375,False
+"/* Aggregates with Date Range Filter (Corrected: use AND, standard date format) */ SELECT AVG(P) AS avg_power_output, MAX(P) AS max_power_output, MIN(P) AS min_power_output FROM data WHERE time >= '2023-01-01' AND time < '2024-01-01'","-- Aggregates with Date Range Filter (Corrected: use AND, standard date format)
+SELECT AVG(P) as avg_power_output, MAX(P) as max_power_output, MIN(P) as min_power_output FROM data WHERE time >= '2023-01-01' AND time < '2024-01-01'",MySQLHandler,106.21905326843262,0.9668913857677902,647.5390625,15.809059143066406,0.0,0.0,0.00167083740234375,0.0019245147705078125,1,0.000148773193359375,False
+"/* Aggregates Grouped by Year with Ordering */ SELECT EXTRACT(YEAR FROM time) AS year, AVG(P) AS avg_power_output, MAX(P) AS max_power_output, MIN(P) AS min_power_output FROM data WHERE time >= '2023-01-01' AND time < '2024-01-01' GROUP BY EXTRACT(YEAR FROM time) ORDER BY CASE WHEN EXTRACT(YEAR FROM time) IS NULL THEN 1 ELSE 0 END, EXTRACT(YEAR FROM time)","-- Aggregates Grouped by Year with Ordering
+SELECT
+    EXTRACT(YEAR FROM time) as year,
+    AVG(P) as avg_power_output,
+    MAX(P) as max_power_output,
+    MIN(P) as min_power_output
+FROM data
+WHERE time >= '2023-01-01' AND time < '2024-01-01'
+GROUP BY EXTRACT(YEAR FROM time)
+ORDER BY EXTRACT(YEAR FROM time)",MySQLHandler,104.5989990234375,1.0648756218905473,650.1796875,15.873527526855469,0.0,0.0,0.0017461776733398438,0.0019617080688476562,1,0.000156402587890625,False
+"/* JOIN Queries */ /* Simple Self-Join to Calculate Power Change */ SELECT t1.time, t1.P AS power_output, t2.P AS previous_power, t1.P - t2.P AS power_change FROM data AS t1 JOIN data AS t2 ON t1.time = t2.time","-- JOIN Queries
+-- Simple Self-Join to Calculate Power Change
+SELECT
+    t1.time,     
+    t1.P as power_output,  
+    t2.P as previous_power, 
+    t1.P - t2.P as power_change
+FROM data t1
+JOIN data t2 ON t1.time = t2.time",MySQLHandler,1139.862060546875,1.2187886279357232,658.984375,16.088485717773438,0.0,0.0,0.025266647338867188,5.549371719360352,166536,14.61166763305664,False
+"/* The INTERVAL creates an error in mysql */ /* WINDOW FUNCTION Queries */ /* Power output changes */ SELECT d.time, P AS power_output, LAG(P) OVER (ORDER BY CASE WHEN time IS NULL THEN 1 ELSE 0 END, time) AS previous_P, P - LAG(P) OVER (ORDER BY CASE WHEN time IS NULL THEN 1 ELSE 0 END, time) AS power_change FROM data AS d","-- The INTERVAL creates an error in mysql
+
+-- WINDOW FUNCTION Queries
+-- Power output changes
+SELECT
+    d.time,
+    P as power_output,
+    LAG(P) OVER (ORDER BY time) as previous_P,
+    P - LAG(P) OVER (ORDER BY time) as power_change
+FROM data as d",MySQLHandler,2900.2292156219482,1.7647940074906368,529.87109375,12.93630599975586,0.0,0.0,0.02812480926513672,6.4875640869140625,166536,14.61166763305664,False
+"/* Running total */ SELECT time, P AS power_output, SUM(P) OVER (ORDER BY CASE WHEN time IS NULL THEN 1 ELSE 0 END, time) AS running_total FROM data ORDER BY CASE WHEN time IS NULL THEN 1 ELSE 0 END, time","-- Running total
+SELECT
+    time,
+    P as power_output,
+    SUM(P) OVER (ORDER BY time) as running_total
+FROM data
+ORDER BY time",MySQLHandler,1850.5971431732178,1.8265168539325842,560.3671875,13.680839538574219,0.0,0.0,0.03184986114501953,7.439253807067871,166536,13.34109878540039,False
