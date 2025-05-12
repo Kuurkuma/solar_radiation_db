@@ -42,10 +42,10 @@ if __name__ == "__main__":
     #   )
     
     # Load local time series dataset
-    benchmarker.get_local_csv('data/no_headers_brandenburger_gate_seriescalc.csv')
+    benchmarker.get_local_csv('../data/no_headers_brandenburger_gate_seriescalc.csv')
  
     # Load the queries to be executed
-    queries =load_queries_split_by_semicolon('protocol_queries.sql')
+    queries =load_queries_split_by_semicolon('../protocol_queries.sql')
     
     # Define the queries to be executed
     benchmarker.define_queries(queries=queries)

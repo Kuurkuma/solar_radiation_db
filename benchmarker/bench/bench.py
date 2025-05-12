@@ -360,9 +360,29 @@ class Benchmarker(object):
         :rtype: str
         """
         dtype = str(series.dtype)
-        if "int" in dtype:
-            return "Int64"
-        elif "float" in dtype:
-            return "Float64"
-        else:
-            return "String"
+
+        type_mapping = {
+            # Integer types
+            'int8': 'Int8',
+            'int16': 'Int16',
+            'int32': 'Int32',
+            'int64': 'Int64',
+            'uint8': 'UInt8',
+            'uint16': 'UInt16',
+            'uint32': 'UInt32',
+            'uint64': 'UInt64',
+
+            # Floating point types
+            'Float32': 'Float32',
+            'Float64': 'Float64',
+
+            # String types
+            'object': 'String',
+            'string': 'String',
+
+            # Date and datetime types
+            'datetime64[ns]': 'DateTime',
+            'datetime64': 'DateTime',
+            'date': 'Date',
+        }
+        return type_mapping.get(dtype)
