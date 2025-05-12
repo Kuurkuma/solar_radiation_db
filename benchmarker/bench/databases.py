@@ -145,6 +145,7 @@ class DockerDatabaseHandler(object):
         port_mapping: Dict[int, int] = None,
         environment: Dict[str, str] = None,
         volumes: List[str] = None,
+        platform: str = "linux/amd64",
         cpu_limit: float = 1.0,
         memory_limit: str = "2g",
         sql_dialect: str = "postgres",
@@ -176,6 +177,7 @@ class DockerDatabaseHandler(object):
         self.port_mapping = port_mapping or {}
         self.environment = environment or {}
         self.volumes = volumes or []
+        self.platform = platform
         self.cpu_limit = cpu_limit
         self.memory_limit = memory_limit
         self.container: Optional[Container] = None
@@ -216,6 +218,7 @@ class DockerDatabaseHandler(object):
             environment=self.environment,
             ports=ports,
             volumes=self.volumes,
+            platform=self.platform,
             cpu_quota=int(
                 self.cpu_limit * 100000
             ),  # Docker uses CPU quota in microseconds
