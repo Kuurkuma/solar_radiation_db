@@ -132,7 +132,7 @@ class Benchmarker(object):
 
             # Start the database container
             database_handler.start()
-
+            logger.info(f"what the fuck is wrong with our connection string: {database_handler.sqlalchemy_connection_string}")
             try:
                 # Connect to database
                 engine = create_engine(database_handler.sqlalchemy_connection_string)
