@@ -97,7 +97,7 @@ class Benchmarker(object):
 
         :return: None
         """
-        self.data = pd.read_csv(path).convert_dtypes()
+        self.data = pd.read_csv(path, parse_dates=["time"], infer_datetime_format=True).convert_dtypes()
 
     def define_queries(self, queries: list):
         """
@@ -186,14 +186,14 @@ class Benchmarker(object):
 
         type_mapping = {
             # Integer types
-            'int8': 'Int8',
-            'int16': 'Int16',
-            'int32': 'Int32',
-            'int64': 'Int64',
-            'uint8': 'UInt8',
-            'uint16': 'UInt16',
-            'uint32': 'UInt32',
-            'uint64': 'UInt64',
+            'Int8': 'Int8',
+            'Int16': 'Int16',
+            'Int32': 'Int32',
+            'Int64': 'Int64',
+            'UInt8': 'UInt8',
+            'UInt16': 'UInt16',
+            'UInt32': 'UInt32',
+            'UInt64': 'UInt64',
 
             # Floating point types
             'Float32': 'Float32',
@@ -209,7 +209,10 @@ class Benchmarker(object):
             'date': 'Date',
         }
         columns_list = []
+        logger.info(f"{self.data.items}")
+        logger.info(f"{self.data.dtypes}")
         for column_name, column_data in self.data.items():
+            logger.info(f"`{column_name}` {type_mapping[str(column_data.dtype)]}")
             columns_list.append(f"`{column_name}` {type_mapping[str(column_data.dtype)]}")
 
 
