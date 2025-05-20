@@ -25,7 +25,7 @@ if __name__ == "__main__":
 
     databases = {
         "mysql": MySQLHandler(name="test-mysql", port=3306, cpu_limit=2, memory_limit="4G", sql_dialect="mysql"),
-        "postgres": PostgresHandler(name="test-postgres", port=5432, cpu_limit=2, sql_dialect="postgres"),
+        "postgres": PostgresHandler(name="test-postgres", port=6543, cpu_limit=2, sql_dialect="postgres"),
         "duckdb": DuckDBHandler(
             name="test-duckdb", db_file="duckdb_data.db", cpu_limit=2, sql_dialect="duckdb"
         ),
