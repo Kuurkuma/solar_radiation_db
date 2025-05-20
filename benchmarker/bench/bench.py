@@ -2,6 +2,8 @@ import logging
 import sys
 import pandas as pd
 from sqlalchemy import create_engine, text
+import kagglehub
+from kagglehub import KaggleDatasetAdapter
 from .databases import ClickHouseHandler, QueryMetrics
 
 logging.basicConfig(
@@ -98,6 +100,47 @@ class Benchmarker(object):
         :return: None
         """
         self.data = pd.read_csv(path, parse_dates=["time"], infer_datetime_format=True).convert_dtypes()
+
+    def get_data_from_kaggle(self, handle: str, path: str):
+        # Login to Kaggle
+        kagglehub.login()
+
+        try:
+            # Download the file using the proper method
+            file_path = kagglehub.dataset_download(handle, path=path)
+            logger.info(f"Downloaded file to: {file_path}")
+
+            # Try to load the file with pandas
+            try:
+                # First try standard JSON
+                self.data = pd.read_json(file_path)
+            except ValueError:
+                # If that fails, try JSONL format
+                try:
+                    self.data = pd.read_json(file_path, lines=True)
+                except ValueError:
+                    # Last resort: manual JSON fix
+                    with open(file_path, 'r') as f:
+                        content = f.read().strip()
+                        # Fix common JSON issues
+                        if content.endswith(','):
+                            content = content[:-1]
+                        if '[' in content and not content.endswith(']'):
+                            content += ']'
+
+                    # Parse the fixed content
+                    import json
+                    from io import StringIO
+                    fixed_json = json.loads(content)
+                    self.data = pd.DataFrame(fixed_json)
+
+            logger.info(f"Successfully loaded {len(self.data)} rows")
+
+        except Exception as e:
+            logger.error(f"Error loading Kaggle dataset: {e}")
+            # Fallback to iris dataset if all else fails
+            self.data = pd.read_csv("https://raw.githubusercontent.com/mwaskom/seaborn-data/master/iris.csv")
+            logger.info(f"Fallback: Loaded {len(self.data)} rows from iris dataset")
 
     def define_queries(self, queries: list):
         """

@@ -25,7 +25,7 @@ if __name__ == "__main__":
 
     databases = {
         "mysql": MySQLHandler(name="test-mysql", port=3306, cpu_limit=2, memory_limit="4G", sql_dialect="mysql"),
-        "postgres": PostgresHandler(name="test-postgres", port=5432, cpu_limit=2, sql_dialect="postgres"),
+        "postgres": PostgresHandler(name="test-postgres", port=6543, cpu_limit=2, sql_dialect="postgres"),
         "duckdb": DuckDBHandler(
             name="test-duckdb", db_file="duckdb_data.db", cpu_limit=2, sql_dialect="duckdb"
         ),
@@ -42,7 +42,10 @@ if __name__ == "__main__":
     #   )
     
     # Load local time series dataset
-    benchmarker.get_local_csv('../data/no_headers_brandenburger_gate_seriescalc.csv')
+    benchmarker.get_data_from_kaggle(
+        handle="devdope/900k-spotify",
+        path="900k Definitive Spotify Dataset.json"
+    )
  
     # Load the queries to be executed
     queries =load_queries_split_by_semicolon('../protocol_queries.sql')

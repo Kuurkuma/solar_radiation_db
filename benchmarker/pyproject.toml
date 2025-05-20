@@ -10,6 +10,7 @@ dependencies = [
     "docker>=7.1.0",
     "duckdb-engine>=0.17.0",
     "findspark>=2.0.1",
+    "kagglehub>=0.3.12",
     "pandas>=2.2.3",
     "psutil>=7.0.0",
     "psycopg2-binary>=2.9.10",

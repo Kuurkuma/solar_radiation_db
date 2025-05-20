@@ -1,163 +1,190 @@
 query,original_query,database_type,execution_time_ms,cpu_usage_percent,memory_usage_mb,memory_usage_percent,disk_read_mb,disk_write_mb,network_in_mb,network_out_mb,result_rows,result_size_mb,failed
 /* SELECT Queries */ /* Basic Select with Limit */ SELECT * FROM data LIMIT 100,"-- SELECT Queries
 -- Basic Select with Limit
-SELECT * FROM data LIMIT 100",MySQLHandler,12.682199478149414,0.4364363863707409,671.08203125,16.383838653564453,0.0,0.0,0.0015840530395507812,0.006682395935058594,100,0.012714385986328125,False
+SELECT * FROM data LIMIT 100",MySQLHandler,30.44414520263672,5.701373283395755,973.0390625,23.755836486816406,0.0,0.0,0.0015840530395507812,0.006703376770019531,100,0.006992340087890625,False
 /* Basic Count */ SELECT COUNT(*) FROM data,"-- Basic Count
-SELECT COUNT(*) FROM data",MySQLHandler,6.0405731201171875,0.2993613024420789,671.1484375,16.385459899902344,0.0,0.0,0.0016584396362304688,0.0016908645629882812,1,0.000133514404296875,False
+SELECT COUNT(*) FROM data",MySQLHandler,40.537118911743164,1.3127819548872182,986.26171875,24.078655242919922,0.0,0.0,0.0014896392822265625,0.0016908645629882812,1,0.000133514404296875,False
 /* Select with Simple Date Range Filter */ SELECT * FROM data WHERE time >= '2023-01-01' AND time < '2024-01-01',"-- Select with Simple Date Range Filter 
-SELECT * FROM data WHERE time >= '2023-01-01' AND time < '2024-01-01'",MySQLHandler,86.73858642578125,0.2470492317340859,671.36328125,16.390705108642578,0.0,0.0,0.003696441650390625,0.4384126663208008,8760,1.1028785705566406,False
-/* Select with Multiple Filters (Date Range and Category) */ SELECT * FROM data WHERE time >= '2023-01-01' AND time < '2024-01-01' AND P > 0,"-- Select with Multiple Filters (Date Range and Category)
-SELECT * FROM data WHERE time >= '2023-01-01' AND time < '2024-01-01' AND P > 0",MySQLHandler,62.97111511230469,0.24493081761006288,671.39453125,16.391468048095703,0.0,0.0,0.0027780532836914062,0.2315044403076172,4097,0.5158767700195312,False
-"/* Select with ORDER BY and Limit */ SELECT * FROM data ORDER BY CASE WHEN P IS NULL THEN 1 ELSE 0 END DESC, P DESC LIMIT 50","-- Select with ORDER BY and Limit
-SELECT * FROM data ORDER BY P DESC LIMIT 50",MySQLHandler,52.043914794921875,0.2818928235662802,672.171875,16.410446166992188,0.0,0.0,0.0015878677368164062,0.005206108093261719,50,0.006420135498046875,False
-"/* Get top 50 rows by power output */ /* AGGREGATE Queries */ /* Basic Aggregates */ SELECT AVG(P) AS avg_power_output, MAX(P) AS max_power_output, MIN(P) AS min_power_output FROM data","-- Get top 50 rows by power output
+SELECT * FROM data WHERE time >= '2023-01-01' AND time < '2024-01-01'",MySQLHandler,193.9249038696289,6.158389937106918,995.58984375,24.306392669677734,0.0,0.0,0.003696441650390625,0.4384336471557617,8760,0.6016273498535156,False
+/* Select with Multiple Filters (Date Range and Category) */ SELECT * FROM data WHERE time >= '2023-01-01' AND time < '2024-01-01' AND power_output > 0,"-- Select with Multiple Filters (Date Range and Category)
+SELECT * FROM data WHERE time >= '2023-01-01' AND time < '2024-01-01' AND power_output > 0",MySQLHandler,160.0492000579834,1.14900878293601,995.44921875,24.302959442138672,0.0,0.0,0.00266265869140625,0.2314624786376953,4097,0.2814445495605469,False
+"/* Select with ORDER BY and Limit */ SELECT * FROM data ORDER BY CASE WHEN power_output IS NULL THEN 1 ELSE 0 END DESC, power_output DESC LIMIT 50","-- Select with ORDER BY and Limit
+SELECT * FROM data ORDER BY power_output DESC LIMIT 50",MySQLHandler,139.54401016235352,1.128643216080402,995.77734375,24.310970306396484,0.0,0.0,0.001598358154296875,0.005227088928222656,50,0.003559112548828125,False
+"/* Get top 50 rows by power output */ /* AGGREGATE Queries */ /* Basic Aggregates */ SELECT AVG(power_output) AS avg_power_output, MAX(power_output) AS max_power_output, MIN(power_output) AS min_power_output FROM data","-- Get top 50 rows by power output
 
 -- AGGREGATE Queries 
 -- Basic Aggregates
-SELECT AVG(P) as avg_power_output, MAX(P) as max_power_output, MIN(P) as min_power_output FROM data",MySQLHandler,32.28354454040527,0.2294169278996865,672.33203125,16.414356231689453,0.0,0.0,0.001789093017578125,0.0017986297607421875,1,0.000148773193359375,False
-"/* Aggregates with Date Range Filter (Corrected: use AND, standard date format) */ SELECT AVG(P) AS avg_power_output, MAX(P) AS max_power_output, MIN(P) AS min_power_output FROM data WHERE time >= '2023-01-01' AND time < '2024-01-01'","-- Aggregates with Date Range Filter (Corrected: use AND, standard date format)
-SELECT AVG(P) as avg_power_output, MAX(P) as max_power_output, MIN(P) as min_power_output FROM data WHERE time >= '2023-01-01' AND time < '2024-01-01'",MySQLHandler,37.11080551147461,0.26286790084719175,672.5390625,16.419410705566406,0.0,0.0,0.00167083740234375,0.0017986297607421875,1,0.000148773193359375,False
-"/* Aggregates Grouped by Year with Ordering */ SELECT EXTRACT(YEAR FROM time) AS year, AVG(P) AS avg_power_output, MAX(P) AS max_power_output, MIN(P) AS min_power_output FROM data WHERE time >= '2023-01-01' AND time < '2024-01-01' GROUP BY EXTRACT(YEAR FROM time) ORDER BY CASE WHEN EXTRACT(YEAR FROM time) IS NULL THEN 1 ELSE 0 END, EXTRACT(YEAR FROM time)","-- Aggregates Grouped by Year with Ordering
+SELECT AVG(power_output) as avg_power_output, MAX(power_output) as max_power_output, MIN(power_output) as min_power_output FROM data",MySQLHandler,112.19191551208496,1.1719597989949748,996.171875,24.320602416992188,0.0,0.0,0.001651763916015625,0.0019245147705078125,1,0.000148773193359375,False
+"/* Aggregates with Date Range Filter (Corrected: use AND, standard date format) */ SELECT AVG(power_output) AS avg_power_output, MAX(power_output) AS max_power_output, MIN(power_output) AS min_power_output FROM data WHERE time >= '2023-01-01' AND time < '2024-01-01'","-- Aggregates with Date Range Filter (Corrected: use AND, standard date format)
+SELECT AVG(power_output) as avg_power_output, MAX(power_output) as max_power_output, MIN(power_output) as min_power_output FROM data WHERE time >= '2023-01-01' AND time < '2024-01-01'",MySQLHandler,105.34930229187012,1.2404010025062657,555.65625,13.565826416015625,0.0,0.0,0.0017023086547851562,0.0019245147705078125,1,0.000148773193359375,False
+"-- Aggregates Grouped by Year with Ordering
 SELECT
     EXTRACT(YEAR FROM time) as year,
-    AVG(P) as avg_power_output,
-    MAX(P) as max_power_output,
-    MIN(P) as min_power_output
+    AVG(power_output) as avg_power_output,
+    MAX(power_output) as max_power_output,
+    MIN(power_output) as min_power_output
 FROM data
 WHERE time >= '2023-01-01' AND time < '2024-01-01'
-GROUP BY EXTRACT(YEAR FROM time)
-ORDER BY EXTRACT(YEAR FROM time)",MySQLHandler,46.970367431640625,0.2550782717595491,672.90234375,16.428279876708984,0.0,0.0,0.0018091201782226562,0.0020246505737304688,1,0.000156402587890625,False
-"/* JOIN Queries */ /* Simple Self-Join to Calculate Power Change */ SELECT t1.time, t1.P AS power_output, t2.P AS previous_power, t1.P - t2.P AS power_change FROM data AS t1 JOIN data AS t2 ON t1.time = t2.time","-- JOIN Queries
+GROUpower_output BY EXTRACT(YEAR FROM time)
+ORDER BY EXTRACT(YEAR FROM time)","-- Aggregates Grouped by Year with Ordering
+SELECT
+    EXTRACT(YEAR FROM time) as year,
+    AVG(power_output) as avg_power_output,
+    MAX(power_output) as max_power_output,
+    MIN(power_output) as min_power_output
+FROM data
+WHERE time >= '2023-01-01' AND time < '2024-01-01'
+GROUpower_output BY EXTRACT(YEAR FROM time)
+ORDER BY EXTRACT(YEAR FROM time)",MySQLHandler,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0,0.0,True
+"/* JOIN Queries */ /* Simple Self-Join to Calculate Power Change */ SELECT t1.time, t1.power_output AS power_output, t2.power_output AS previous_power, t1.power_output - t2.power_output AS power_change FROM data AS t1 JOIN data AS t2 ON t1.time = t2.time","-- JOIN Queries
 -- Simple Self-Join to Calculate Power Change
 SELECT
     t1.time,     
-    t1.P as power_output,  
-    t2.P as previous_power, 
-    t1.P - t2.P as power_change
+    t1.power_output as power_output,  
+    t2.power_output as previous_power, 
+    t1.power_output - t2.power_output as power_change
 FROM data t1
-JOIN data t2 ON t1.time = t2.time",MySQLHandler,511.07048988342285,0.2666499843603378,681.84375,16.646575927734375,0.0,0.0,0.021175384521484375,5.54798698425293,166536,14.61166763305664,False
-"/* The INTERVAL creates an error in mysql */ /* WINDOW FUNCTION Queries */ /* Power output changes */ SELECT d.time, P AS power_output, LAG(P) OVER (ORDER BY CASE WHEN time IS NULL THEN 1 ELSE 0 END, time) AS previous_P, P - LAG(P) OVER (ORDER BY CASE WHEN time IS NULL THEN 1 ELSE 0 END, time) AS power_change FROM data AS d","-- The INTERVAL creates an error in mysql
+JOIN data t2 ON t1.time = t2.time",MySQLHandler,1127.274990081787,1.172462311557789,564.33203125,13.777637481689453,0.0,0.0,0.025119781494140625,5.5492143630981445,166536,5.082401275634766,False
+"/* The INTERVAL creates an error in mysql */ /* WINDOW FUNCTION Queries */ /* Power output changes */ SELECT d.time, power_output AS power_output, LAG(power_output) OVER (ORDER BY CASE WHEN time IS NULL THEN 1 ELSE 0 END, time) AS previous_power_output, power_output - LAG(power_output) OVER (ORDER BY CASE WHEN time IS NULL THEN 1 ELSE 0 END, time) AS power_change FROM data AS d","-- The INTERVAL creates an error in mysql
 
 -- WINDOW FUNCTION Queries
 -- Power output changes
 SELECT
     d.time,
-    P as power_output,
-    LAG(P) OVER (ORDER BY time) as previous_P,
-    P - LAG(P) OVER (ORDER BY time) as power_change
-FROM data as d",MySQLHandler,1442.7680969238281,0.3885,747.5,18.24951171875,0.0,0.0,0.02812480926513672,6.4875640869140625,166536,14.61166763305664,False
-"/* Running total */ SELECT time, P AS power_output, SUM(P) OVER (ORDER BY CASE WHEN time IS NULL THEN 1 ELSE 0 END, time) AS running_total FROM data ORDER BY CASE WHEN time IS NULL THEN 1 ELSE 0 END, time","-- Running total
+    power_output as power_output,
+    LAG(power_output) OVER (ORDER BY time) as previous_power_output,
+    power_output - LAG(power_output) OVER (ORDER BY time) as power_change
+FROM data as d",MySQLHandler,1435.4450702667236,1.151779448621554,566.00390625,13.81845474243164,0.0,0.0,0.028177261352539062,6.487595558166504,166536,5.082401275634766,False
+"/* Running total */ SELECT time, power_output AS power_output, SUM(power_output) OVER (ORDER BY CASE WHEN time IS NULL THEN 1 ELSE 0 END, time) AS running_total FROM data ORDER BY CASE WHEN time IS NULL THEN 1 ELSE 0 END, time","-- Running total
 SELECT
     time,
-    P as power_output,
-    SUM(P) OVER (ORDER BY time) as running_total
+    power_output as power_output,
+    SUM(power_output) OVER (ORDER BY time) as running_total
 FROM data
-ORDER BY time",MySQLHandler,889.2524242401123,0.29309068089112017,774.48828125,18.908405303955078,0.0,0.0,0.022042274475097656,7.435646057128906,166536,13.34109878540039,False
+ORDER BY time",MySQLHandler,1224.6899604797363,1.191568381430364,580.9453125,14.183235168457031,0.0,0.0,0.03187084197998047,7.439264297485352,166536,3.8118324279785156,False
 /* SELECT Queries */ /* Basic Select with Limit */ SELECT * FROM data LIMIT 100,"-- SELECT Queries
 -- Basic Select with Limit
-SELECT * FROM data LIMIT 100",PostgresHandler,5.995512008666992,0.017994376757263356,197.52734375,9.644889831542969,0.0,0.0,0.002758026123046875,0.01007843017578125,100,0.012714385986328125,False
+SELECT * FROM data LIMIT 100",DuckDBHandler,6.766080856323242,0.0035175879396984926,119.24609375,11.645126342773438,0.0,0.0,0.0,0.0,100,0.006992340087890625,False
 /* Basic Count */ SELECT COUNT(*) FROM data,"-- Basic Count
-SELECT COUNT(*) FROM data",PostgresHandler,13.104915618896484,0.026298619824341278,199.2421875,9.728622436523438,0.0,0.0,0.0019855499267578125,0.0023717880249023438,1,0.000133514404296875,False
+SELECT COUNT(*) FROM data",DuckDBHandler,5.160331726074219,0.0046,119.24609375,11.645126342773438,0.0,0.0,0.0,0.0,1,0.000133514404296875,False
 /* Select with Simple Date Range Filter */ SELECT * FROM data WHERE time >= '2023-01-01' AND time < '2024-01-01',"-- Select with Simple Date Range Filter 
-SELECT * FROM data WHERE time >= '2023-01-01' AND time < '2024-01-01'",PostgresHandler,28.12504768371582,0.01244277202884917,197.578125,9.647369384765625,0.0,0.0,0.007822036743164062,0.6929836273193359,8760,1.1028785705566406,False
-/* Select with Multiple Filters (Date Range and Category) */ SELECT * FROM data WHERE time >= '2023-01-01' AND time < '2024-01-01' AND P > 0,"-- Select with Multiple Filters (Date Range and Category)
-SELECT * FROM data WHERE time >= '2023-01-01' AND time < '2024-01-01' AND P > 0",PostgresHandler,12.528657913208008,0.01907151819322459,199.34375,9.73358154296875,0.0,0.0,0.0019845962524414062,0.0024738311767578125,0,0.0,True
-/* Select with ORDER BY and Limit */ SELECT * FROM data ORDER BY P DESC LIMIT 50,"-- Select with ORDER BY and Limit
-SELECT * FROM data ORDER BY P DESC LIMIT 50",PostgresHandler,6.116390228271484,0.02951992469406966,201.26171875,9.827232360839844,0.0,0.0,0.0019273757934570312,0.0024728775024414062,0,0.0,True
-"/* Get top 50 rows by power output */ /* AGGREGATE Queries */ /* Basic Aggregates */ SELECT AVG(P) AS avg_power_output, MAX(P) AS max_power_output, MIN(P) AS min_power_output FROM data","-- Get top 50 rows by power output
+SELECT * FROM data WHERE time >= '2023-01-01' AND time < '2024-01-01'",DuckDBHandler,27.093887329101562,0.003919597989949749,78.66796875,7.6824188232421875,0.0,0.0,0.0,0.0,8760,0.6016273498535156,False
+/* Select with Multiple Filters (Date Range and Category) */ SELECT * FROM data WHERE time >= '2023-01-01' AND time < '2024-01-01' AND power_output > 0,"-- Select with Multiple Filters (Date Range and Category)
+SELECT * FROM data WHERE time >= '2023-01-01' AND time < '2024-01-01' AND power_output > 0",DuckDBHandler,15.778779983520508,0.0027033792240300373,78.66796875,7.6824188232421875,0.0,0.0,0.0,0.0,4097,0.2814445495605469,False
+/* Select with ORDER BY and Limit */ SELECT * FROM data ORDER BY power_output DESC NULLS FIRST LIMIT 50,"-- Select with ORDER BY and Limit
+SELECT * FROM data ORDER BY power_output DESC LIMIT 50",DuckDBHandler,7.733821868896484,0.0030037546933667086,78.66796875,7.6824188232421875,0.0,0.0,0.0,0.0,50,0.003559112548828125,False
+"/* Get top 50 rows by power output */ /* AGGREGATE Queries */ /* Basic Aggregates */ SELECT AVG(power_output) AS avg_power_output, MAX(power_output) AS max_power_output, MIN(power_output) AS min_power_output FROM data","-- Get top 50 rows by power output
 
 -- AGGREGATE Queries 
 -- Basic Aggregates
-SELECT AVG(P) as avg_power_output, MAX(P) as max_power_output, MIN(P) as min_power_output FROM data",PostgresHandler,5.170583724975586,0.018735128365685663,202.68359375,9.896659851074219,0.0,0.0,0.0020227432250976562,0.0024728775024414062,0,0.0,True
-"/* Aggregates with Date Range Filter (Corrected: use AND, standard date format) */ SELECT AVG(P) AS avg_power_output, MAX(P) AS max_power_output, MIN(P) AS min_power_output FROM data WHERE time >= '2023-01-01' AND time < '2024-01-01'","-- Aggregates with Date Range Filter (Corrected: use AND, standard date format)
-SELECT AVG(P) as avg_power_output, MAX(P) as max_power_output, MIN(P) as min_power_output FROM data WHERE time >= '2023-01-01' AND time < '2024-01-01'",PostgresHandler,5.5789947509765625,0.37775266792215945,205.17578125,10.018348693847656,0.0,0.0,0.0020732879638671875,0.0024728775024414062,0,0.0,True
-"/* Aggregates Grouped by Year with Ordering */ SELECT EXTRACT(YEAR FROM time) AS year, AVG(P) AS avg_power_output, MAX(P) AS max_power_output, MIN(P) AS min_power_output FROM data WHERE time >= '2023-01-01' AND time < '2024-01-01' GROUP BY EXTRACT(YEAR FROM time) ORDER BY EXTRACT(YEAR FROM time)","-- Aggregates Grouped by Year with Ordering
+SELECT AVG(power_output) as avg_power_output, MAX(power_output) as max_power_output, MIN(power_output) as min_power_output FROM data",DuckDBHandler,5.117893218994141,0.0024090338770388956,78.66796875,7.6824188232421875,0.0,0.0,0.0,0.0,1,0.000148773193359375,False
+"/* Aggregates with Date Range Filter (Corrected: use AND, standard date format) */ SELECT AVG(power_output) AS avg_power_output, MAX(power_output) AS max_power_output, MIN(power_output) AS min_power_output FROM data WHERE time >= '2023-01-01' AND time < '2024-01-01'","-- Aggregates with Date Range Filter (Corrected: use AND, standard date format)
+SELECT AVG(power_output) as avg_power_output, MAX(power_output) as max_power_output, MIN(power_output) as min_power_output FROM data WHERE time >= '2023-01-01' AND time < '2024-01-01'",DuckDBHandler,5.574941635131836,0.004221105527638191,78.66796875,7.6824188232421875,0.0,0.0,0.0,0.0,1,0.000148773193359375,False
+"-- Aggregates Grouped by Year with Ordering
 SELECT
     EXTRACT(YEAR FROM time) as year,
-    AVG(P) as avg_power_output,
-    MAX(P) as max_power_output,
-    MIN(P) as min_power_output
+    AVG(power_output) as avg_power_output,
+    MAX(power_output) as max_power_output,
+    MIN(power_output) as min_power_output
 FROM data
 WHERE time >= '2023-01-01' AND time < '2024-01-01'
-GROUP BY EXTRACT(YEAR FROM time)
-ORDER BY EXTRACT(YEAR FROM time)",PostgresHandler,5.251646041870117,0.019830985915492958,207.13671875,10.114097595214844,0.0,0.0,0.0022115707397460938,0.002655029296875,0,0.0,True
-"/* JOIN Queries */ /* Simple Self-Join to Calculate Power Change */ SELECT t1.time, t1.P AS power_output, t2.P AS previous_power, t1.P - t2.P AS power_change FROM data AS t1 JOIN data AS t2 ON t1.time = t2.time","-- JOIN Queries
+GROUpower_output BY EXTRACT(YEAR FROM time)
+ORDER BY EXTRACT(YEAR FROM time)","-- Aggregates Grouped by Year with Ordering
+SELECT
+    EXTRACT(YEAR FROM time) as year,
+    AVG(power_output) as avg_power_output,
+    MAX(power_output) as max_power_output,
+    MIN(power_output) as min_power_output
+FROM data
+WHERE time >= '2023-01-01' AND time < '2024-01-01'
+GROUpower_output BY EXTRACT(YEAR FROM time)
+ORDER BY EXTRACT(YEAR FROM time)",DuckDBHandler,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0,0.0,True
+"/* JOIN Queries */ /* Simple Self-Join to Calculate Power Change */ SELECT t1.time, t1.power_output AS power_output, t2.power_output AS previous_power, t1.power_output - t2.power_output AS power_change FROM data AS t1 JOIN data AS t2 ON t1.time = t2.time","-- JOIN Queries
 -- Simple Self-Join to Calculate Power Change
 SELECT
     t1.time,     
-    t1.P as power_output,  
-    t2.P as previous_power, 
-    t1.P - t2.P as power_change
+    t1.power_output as power_output,  
+    t2.power_output as previous_power, 
+    t1.power_output - t2.power_output as power_change
 FROM data t1
-JOIN data t2 ON t1.time = t2.time",PostgresHandler,5.133390426635742,0.017688442211055276,208.578125,10.184478759765625,0.0,0.0,0.0020656585693359375,0.0024738311767578125,0,0.0,True
-"/* The INTERVAL creates an error in mysql */ /* WINDOW FUNCTION Queries */ /* Power output changes */ SELECT d.time, P AS power_output, LAG(P) OVER (ORDER BY time) AS previous_P, P - LAG(P) OVER (ORDER BY time) AS power_change FROM data AS d","-- The INTERVAL creates an error in mysql
+JOIN data t2 ON t1.time = t2.time",DuckDBHandler,288.7296676635742,0.004711779448621554,78.66796875,7.6824188232421875,0.0,0.0,0.0,0.0,166536,5.082401275634766,False
+"/* The INTERVAL creates an error in mysql */ /* WINDOW FUNCTION Queries */ /* Power output changes */ SELECT d.time, power_output AS power_output, LAG(power_output) OVER (ORDER BY time) AS previous_power_output, power_output - LAG(power_output) OVER (ORDER BY time) AS power_change FROM data AS d","-- The INTERVAL creates an error in mysql
 
 -- WINDOW FUNCTION Queries
 -- Power output changes
 SELECT
     d.time,
-    P as power_output,
-    LAG(P) OVER (ORDER BY time) as previous_P,
-    P - LAG(P) OVER (ORDER BY time) as power_change
-FROM data as d",PostgresHandler,5.132436752319336,0.017499999999999998,210.25390625,10.266304016113281,0.0,0.0,0.0020914077758789062,0.0024738311767578125,0,0.0,True
-"/* Running total */ SELECT time, P AS power_output, SUM(P) OVER (ORDER BY time) AS running_total FROM data ORDER BY time","-- Running total
+    power_output as power_output,
+    LAG(power_output) OVER (ORDER BY time) as previous_power_output,
+    power_output - LAG(power_output) OVER (ORDER BY time) as power_change
+FROM data as d",DuckDBHandler,249.7401237487793,0.006015037593984962,78.66796875,7.6824188232421875,0.0,0.0,0.0,0.0,166536,5.082401275634766,False
+"/* Running total */ SELECT time, power_output AS power_output, SUM(power_output) OVER (ORDER BY time) AS running_total FROM data ORDER BY time","-- Running total
 SELECT
     time,
-    P as power_output,
-    SUM(P) OVER (ORDER BY time) as running_total
+    power_output as power_output,
+    SUM(power_output) OVER (ORDER BY time) as running_total
 FROM data
-ORDER BY time",PostgresHandler,15.460968017578125,0.018279974890144383,211.92578125,10.347938537597656,0.0,0.0,0.0019769668579101562,0.0024728775024414062,0,0.0,True
+ORDER BY time",DuckDBHandler,279.86907958984375,0.007780548628428928,78.66796875,7.6824188232421875,0.0,0.0,0.0,0.0,166536,3.8118324279785156,False
 /* SELECT Queries */ /* Basic Select with Limit */ SELECT * FROM data LIMIT 100,"-- SELECT Queries
 -- Basic Select with Limit
-SELECT * FROM data LIMIT 100",DuckDBHandler,12.217998504638672,0.0017047947351927298,123.77734375,12.087631225585938,0.0,0.0,0.00025844573974609375,0.0,100,0.012714385986328125,False
+SELECT * FROM data LIMIT 100",ClickHouseHandler,51.48196220397949,4.479094339622641,693.30078125,16.926288604736328,0.0,0.0,0.00241851806640625,0.008962631225585938,100,0.006992340087890625,False
 /* Basic Count */ SELECT COUNT(*) FROM data,"-- Basic Count
-SELECT COUNT(*) FROM data",DuckDBHandler,2.3713111877441406,0.001702660406885759,123.77734375,12.087631225585938,0.0,0.0,6.67572021484375e-05,0.0,1,0.000133514404296875,False
+SELECT COUNT(*) FROM data",ClickHouseHandler,30.003070831298828,4.790327455919396,728.8125,17.79327392578125,0.0,0.0,0.0028276443481445312,0.004456520080566406,1,0.000133514404296875,False
 /* Select with Simple Date Range Filter */ SELECT * FROM data WHERE time >= '2023-01-01' AND time < '2024-01-01',"-- Select with Simple Date Range Filter 
-SELECT * FROM data WHERE time >= '2023-01-01' AND time < '2024-01-01'",DuckDBHandler,18.033266067504883,0.0018050767784393608,123.77734375,12.087631225585938,0.0,0.0,0.00010204315185546875,0.0,8760,1.1028785705566406,False
-/* Select with Multiple Filters (Date Range and Category) */ SELECT * FROM data WHERE time >= '2023-01-01' AND time < '2024-01-01' AND P > 0,"-- Select with Multiple Filters (Date Range and Category)
-SELECT * FROM data WHERE time >= '2023-01-01' AND time < '2024-01-01' AND P > 0",DuckDBHandler,12.398719787597656,0.007327478042659975,123.77734375,12.087631225585938,0.0,0.0,0.0,0.0,4097,0.5158767700195312,False
-/* Select with ORDER BY and Limit */ SELECT * FROM data ORDER BY P DESC NULLS FIRST LIMIT 50,"-- Select with ORDER BY and Limit
-SELECT * FROM data ORDER BY P DESC LIMIT 50",DuckDBHandler,13.167858123779297,0.0019059561128526644,123.77734375,12.087631225585938,0.0,0.0,0.00010204315185546875,0.0,50,0.006420135498046875,False
-"/* Get top 50 rows by power output */ /* AGGREGATE Queries */ /* Basic Aggregates */ SELECT AVG(P) AS avg_power_output, MAX(P) AS max_power_output, MIN(P) AS min_power_output FROM data","-- Get top 50 rows by power output
+SELECT * FROM data WHERE time >= '2023-01-01' AND time < '2024-01-01'",ClickHouseHandler,164.76798057556152,5.1164000000000005,724.78125,17.694854736328125,0.0,0.0,0.0035877227783203125,0.42529296875,8760,0.6016273498535156,False
+/* Select with Multiple Filters (Date Range and Category) */ SELECT * FROM data WHERE time >= '2023-01-01' AND time < '2024-01-01' AND power_output > 0,"-- Select with Multiple Filters (Date Range and Category)
+SELECT * FROM data WHERE time >= '2023-01-01' AND time < '2024-01-01' AND power_output > 0",ClickHouseHandler,83.73880386352539,4.977901390644753,748.0078125,18.26190948486328,0.0,0.0,0.002742767333984375,0.22524070739746094,4097,0.2814445495605469,False
+/* Select with ORDER BY and Limit */ SELECT * FROM data ORDER BY power_output DESC NULLS FIRST LIMIT 50,"-- Select with ORDER BY and Limit
+SELECT * FROM data ORDER BY power_output DESC LIMIT 50",ClickHouseHandler,53.66778373718262,5.460554156171284,740.92578125,18.089008331298828,0.0,0.0,0.0024957656860351562,0.007430076599121094,50,0.003559112548828125,False
+"/* Get top 50 rows by power output */ /* AGGREGATE Queries */ /* Basic Aggregates */ SELECT AVG(power_output) AS avg_power_output, MAX(power_output) AS max_power_output, MIN(power_output) AS min_power_output FROM data","-- Get top 50 rows by power output
 
 -- AGGREGATE Queries 
 -- Basic Aggregates
-SELECT AVG(P) as avg_power_output, MAX(P) as max_power_output, MIN(P) as min_power_output FROM data",DuckDBHandler,3.3597946166992188,0.0018033813400125235,123.77734375,12.087631225585938,0.0,0.0,6.67572021484375e-05,0.0,1,0.000148773193359375,False
-"/* Aggregates with Date Range Filter (Corrected: use AND, standard date format) */ SELECT AVG(P) AS avg_power_output, MAX(P) AS max_power_output, MIN(P) AS min_power_output FROM data WHERE time >= '2023-01-01' AND time < '2024-01-01'","-- Aggregates with Date Range Filter (Corrected: use AND, standard date format)
-SELECT AVG(P) as avg_power_output, MAX(P) as max_power_output, MIN(P) as min_power_output FROM data WHERE time >= '2023-01-01' AND time < '2024-01-01'",DuckDBHandler,3.3004283905029297,0.0018028169014084508,123.77734375,12.087631225585938,0.0,0.0,0.00010204315185546875,0.0,1,0.000148773193359375,False
-"/* Aggregates Grouped by Year with Ordering */ SELECT EXTRACT(YEAR FROM time) AS year, AVG(P) AS avg_power_output, MAX(P) AS max_power_output, MIN(P) AS min_power_output FROM data WHERE time >= '2023-01-01' AND time < '2024-01-01' GROUP BY EXTRACT(YEAR FROM time) ORDER BY EXTRACT(YEAR FROM time)","-- Aggregates Grouped by Year with Ordering
+SELECT AVG(power_output) as avg_power_output, MAX(power_output) as max_power_output, MIN(power_output) as min_power_output FROM data",ClickHouseHandler,40.196895599365234,26.541759999999996,758.35546875,18.514537811279297,0.0,0.0,0.0024871826171875,0.0045375823974609375,1,0.000148773193359375,False
+"/* Aggregates with Date Range Filter (Corrected: use AND, standard date format) */ SELECT AVG(power_output) AS avg_power_output, MAX(power_output) AS max_power_output, MIN(power_output) AS min_power_output FROM data WHERE time >= '2023-01-01' AND time < '2024-01-01'","-- Aggregates with Date Range Filter (Corrected: use AND, standard date format)
+SELECT AVG(power_output) as avg_power_output, MAX(power_output) as max_power_output, MIN(power_output) as min_power_output FROM data WHERE time >= '2023-01-01' AND time < '2024-01-01'",ClickHouseHandler,42.318105697631836,8.071284046692607,749.12890625,18.28927993774414,0.0,0.0,0.0026636123657226562,0.0045375823974609375,1,0.000148773193359375,False
+"-- Aggregates Grouped by Year with Ordering
 SELECT
     EXTRACT(YEAR FROM time) as year,
-    AVG(P) as avg_power_output,
-    MAX(P) as max_power_output,
-    MIN(P) as min_power_output
+    AVG(power_output) as avg_power_output,
+    MAX(power_output) as max_power_output,
+    MIN(power_output) as min_power_output
 FROM data
 WHERE time >= '2023-01-01' AND time < '2024-01-01'
-GROUP BY EXTRACT(YEAR FROM time)
-ORDER BY EXTRACT(YEAR FROM time)",DuckDBHandler,10.53309440612793,0.0016060225846925972,123.77734375,12.087631225585938,0.0,0.0,0.0,0.0,0,0.0,True
-"/* JOIN Queries */ /* Simple Self-Join to Calculate Power Change */ SELECT t1.time, t1.P AS power_output, t2.P AS previous_power, t1.P - t2.P AS power_change FROM data AS t1 JOIN data AS t2 ON t1.time = t2.time","-- JOIN Queries
+GROUpower_output BY EXTRACT(YEAR FROM time)
+ORDER BY EXTRACT(YEAR FROM time)","-- Aggregates Grouped by Year with Ordering
+SELECT
+    EXTRACT(YEAR FROM time) as year,
+    AVG(power_output) as avg_power_output,
+    MAX(power_output) as max_power_output,
+    MIN(power_output) as min_power_output
+FROM data
+WHERE time >= '2023-01-01' AND time < '2024-01-01'
+GROUpower_output BY EXTRACT(YEAR FROM time)
+ORDER BY EXTRACT(YEAR FROM time)",ClickHouseHandler,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0,0.0,True
+"/* JOIN Queries */ /* Simple Self-Join to Calculate Power Change */ SELECT t1.time, t1.power_output AS power_output, t2.power_output AS previous_power, t1.power_output - t2.power_output AS power_change FROM data AS t1 JOIN data AS t2 ON t1.time = t2.time","-- JOIN Queries
 -- Simple Self-Join to Calculate Power Change
 SELECT
     t1.time,     
-    t1.P as power_output,  
-    t2.P as previous_power, 
-    t1.P - t2.P as power_change
+    t1.power_output as power_output,  
+    t2.power_output as previous_power, 
+    t1.power_output - t2.power_output as power_change
 FROM data t1
-JOIN data t2 ON t1.time = t2.time",DuckDBHandler,163.12289237976074,0.001811320754716981,123.77734375,12.087631225585938,0.0,0.0,0.0,0.0,166536,14.61166763305664,False
-"/* The INTERVAL creates an error in mysql */ /* WINDOW FUNCTION Queries */ /* Power output changes */ SELECT d.time, P AS power_output, LAG(P) OVER (ORDER BY time) AS previous_P, P - LAG(P) OVER (ORDER BY time) AS power_change FROM data AS d","-- The INTERVAL creates an error in mysql
+JOIN data t2 ON t1.time = t2.time",ClickHouseHandler,1395.0448036193848,55.191685393258425,805.89453125,19.675159454345703,0.0,0.0,0.007450103759765625,4.900432586669922,166536,5.082401275634766,False
+"/* The INTERVAL creates an error in mysql */ /* WINDOW FUNCTION Queries */ /* Power output changes */ SELECT d.time, power_output AS power_output, lagInFrame(power_output) OVER (ORDER BY time) AS previous_power_output, power_output - lagInFrame(power_output) OVER (ORDER BY time) AS power_change FROM data AS d","-- The INTERVAL creates an error in mysql
 
 -- WINDOW FUNCTION Queries
 -- Power output changes
 SELECT
     d.time,
-    P as power_output,
-    LAG(P) OVER (ORDER BY time) as previous_P,
-    P - LAG(P) OVER (ORDER BY time) as power_change
-FROM data as d",DuckDBHandler,218.58787536621094,0.001919797916008841,123.77734375,12.087631225585938,0.0,0.0,0.0,0.0,166536,14.61166763305664,False
-"/* Running total */ SELECT time, P AS power_output, SUM(P) OVER (ORDER BY time) AS running_total FROM data ORDER BY time","-- Running total
+    power_output as power_output,
+    LAG(power_output) OVER (ORDER BY time) as previous_power_output,
+    power_output - LAG(power_output) OVER (ORDER BY time) as power_change
+FROM data as d",ClickHouseHandler,98.9081859588623,121.58722012578616,875.55859375,21.37594223022461,0.0,0.0,0.002765655517578125,0.004550933837890625,0,0.0,True
+"/* Running total */ SELECT time, power_output AS power_output, SUM(power_output) OVER (ORDER BY time) AS running_total FROM data ORDER BY time","-- Running total
 SELECT
     time,
-    P as power_output,
-    SUM(P) OVER (ORDER BY time) as running_total
+    power_output as power_output,
+    SUM(power_output) OVER (ORDER BY time) as running_total
 FROM data
-ORDER BY time",DuckDBHandler,239.4402027130127,0.0016095567431625274,123.77734375,12.087631225585938,0.0,0.0,0.0,0.0,166536,13.34109878540039,False
+ORDER BY time",ClickHouseHandler,1306.3240051269531,5.669836477987421,852.671875,20.817184448242188,0.0,0.0,0.008599281311035156,6.785106658935547,166536,3.8118324279785156,False

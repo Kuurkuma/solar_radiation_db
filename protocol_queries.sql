@@ -29,7 +29,7 @@ SELECT
     MIN(power_output) as min_power_output
 FROM data
 WHERE time >= '2023-01-01' AND time < '2024-01-01'
-GROUpower_output BY EXTRACT(YEAR FROM time)
+GROUP BY EXTRACT(YEAR FROM time)
 ORDER BY EXTRACT(YEAR FROM time);
 
 -- JOIN Queries
