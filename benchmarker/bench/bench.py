@@ -114,10 +114,12 @@ class Benchmarker(object):
             try:
                 # First try standard JSON
                 self.data = pd.read_json(file_path)
+                result = "standard JSON"
             except ValueError:
                 # If that fails, try JSONL format
                 try:
                     self.data = pd.read_json(file_path, lines=True)
+                    result = "JSONL"
                 except ValueError:
                     # Last resort: manual JSON fix
                     with open(file_path, 'r') as f:
@@ -127,6 +129,7 @@ class Benchmarker(object):
                             content = content[:-1]
                         if '[' in content and not content.endswith(']'):
                             content += ']'
+                        result = "manual JSON"
 
                     # Parse the fixed content
                     import json
@@ -134,7 +137,7 @@ class Benchmarker(object):
                     fixed_json = json.loads(content)
                     self.data = pd.DataFrame(fixed_json)
 
-            logger.info(f"Successfully loaded {len(self.data)} rows")
+            logger.info(f"Successfully loaded {len(self.data)} rows with {result} format")
 
         except Exception as e:
             logger.error(f"Error loading Kaggle dataset: {e}")
@@ -175,7 +178,6 @@ class Benchmarker(object):
 
             # Start the database container
             database_handler.start()
-            logger.info(f"what the fuck is wrong with our connection string: {database_handler.sqlalchemy_connection_string}")
             try:
                 # Connect to database
                 engine = create_engine(database_handler.sqlalchemy_connection_string)
