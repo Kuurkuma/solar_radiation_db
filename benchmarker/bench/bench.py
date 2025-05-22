@@ -1,11 +1,13 @@
 import logging
 import sys
+from unittest.mock import inplace
+import re
 import pandas as pd
 from sqlalchemy import create_engine, text, MetaData, Table, Column, Integer
 from sqlalchemy.dialects.mysql import LONGTEXT, INTEGER, FLOAT, BOOLEAN, VARCHAR
 import kagglehub
 from kagglehub import KaggleDatasetAdapter
-from .databases import ClickHouseHandler, QueryMetrics
+from .databases import ClickHouseHandler, QueryMetrics, MySQLHandler, PostgresHandler, DuckDBHandler
 from tqdm import tqdm
 
 logging.basicConfig(
@@ -107,12 +109,19 @@ class Benchmarker(object):
         # Login to Kaggle
         kagglehub.login()
 
-        self.data = kagglehub.load_dataset(
+        df = kagglehub.load_dataset(
             handle=handle,
             path=path,
             adapter=KaggleDatasetAdapter.PANDAS,
         )
 
+        # Convert to lowercase and replace any non-alphanumeric character with underscore
+        df.columns = [re.sub(r'[^a-z0-9]', '_', s.lower()) for s in df.columns]
+
+        # Remove consecutive underscores and trailing/leading underscores
+        df.columns = [re.sub(r'_+', '_', col).strip('_') for col in df.columns]
+
+        self.data = df
         logger.info(f"Loaded {len(self.data)} rows from Kaggle dataset")
         logger.info(f"Data types: {self.data.dtypes}")
         logger.info(f"Data sample: {self.data.head()}")
@@ -159,25 +168,25 @@ class Benchmarker(object):
                     self._load_data_to_database(database_handler, conn)
 
                     # Run each query and collect metrics
-                    for query in self.queries:
-                        logger.info(f"Running query: {query[:60]}...")
-                        try:
-                            result, metrics = database_handler.run_query_with_metrics(query)
-                            all_metrics.append(metrics.to_dict())
-                    
-                            # Log some sample results
-                            if not result.empty:
-                                sample_size = min(5, len(result))
-                                logger.info(
-                                    f"Sample result ({len(result)} rows total):\n{result.head(sample_size)}"
-                                )
-                        except Exception as e:
-                            logger.error(f"Error running query '{query[:60]}...': {e}")
-                            # Create a failed metrics entry
-                            failed_metrics = QueryMetrics(query=query, original_query=query, 
-                                                        database_type=database_handler.__class__.__name__)
-                            failed_metrics.failed = True
-                            all_metrics.append(failed_metrics.to_dict())
+                    # for query in self.queries:
+                    #     logger.info(f"Running query: {query[:60]}...")
+                    #     try:
+                    #         result, metrics = database_handler.run_query_with_metrics(query)
+                    #         all_metrics.append(metrics.to_dict())
+                    #
+                    #         # Log some sample results
+                    #         if not result.empty:
+                    #             sample_size = min(5, len(result))
+                    #             logger.info(
+                    #                 f"Sample result ({len(result)} rows total):\n{result.head(sample_size)}"
+                    #             )
+                    #     except Exception as e:
+                    #         logger.error(f"Error running query '{query[:60]}...': {e}")
+                    #         # Create a failed metrics entry
+                    #         failed_metrics = QueryMetrics(query=query, original_query=query,
+                    #                                     database_type=database_handler.__class__.__name__)
+                    #         failed_metrics.failed = True
+                    #         all_metrics.append(failed_metrics.to_dict())
 
             except Exception as e:
                 logger.error(f"Error benchmarking {database_name}: {e}")
@@ -204,18 +213,18 @@ class Benchmarker(object):
 
         type_mapping = {
             # Integer types
-            'Int8': 'Int8',
-            'Int16': 'Int16',
-            'Int32': 'Int32',
-            'Int64': 'Int64',
+            'int8': 'Int8',
+            'int16': 'Int16',
+            'int32': 'Int32',
+            'int64': 'Int64',
             'UInt8': 'UInt8',
             'UInt16': 'UInt16',
             'UInt32': 'UInt32',
             'UInt64': 'UInt64',
 
             # Floating point types
-            'Float32': 'Float32',
-            'Float64': 'Float64',
+            'float32': 'Float32',
+            'float64': 'Float64',
 
             # String types
             'object': 'String',
@@ -266,9 +275,7 @@ class Benchmarker(object):
         logger.info(f"Loading data to {database_handler.__class__.__name__}...")
 
         # For MySQL, use Text(length=4294967295) which is equivalent to LONGTEXT
-        if database_handler.__class__.__name__ == 'MySQLHandler':
-
-
+        if isinstance(database_handler, MySQLHandler):
             # Create a dictionary mapping column names to their SQLAlchemy types
             dtype = {}
 
@@ -302,30 +309,32 @@ class Benchmarker(object):
 
             logger.info(f"Table created, now loading data")
 
+            # Now load the data - pandas will respect the column types already defined
+            chunk_size = 10000
+            for i in tqdm(range(0, len(self.data), chunk_size), inplace=True):
+                chunk = self.data.iloc[i:i + chunk_size]
+                try:
+
+                    conn.commit()
+                    logger.info(f"Loaded rows {i} to {min(i + chunk_size, len(self.data))}")
+                except:
+                    logger.error(f"Error loading chunk {i} with content: {chunk}")
+                    sub_chunk_size = 50
+                    for j in range(0, len(chunk), 50):
+                        sub_chunk = chunk.iloc[j:j + sub_chunk_size]
+                        try:
+                            chunk.to_sql(con=conn, name="data", if_exists="append", index=False)
+                            conn.commit()
+                            logger.info(f"Loaded rows {i} to {min(i + chunk_size, len(self.data))}")
+                        except:
+                            logger.error(f"Error loading chunk {i} to sub_chunk {j} with content: {sub_chunk}")
+
         # Special handling for ClickHouse which requires an engine definition
-        if isinstance(database_handler, ClickHouseHandler):
+        elif isinstance(database_handler, ClickHouseHandler):
             self._create_clickhouse_table(conn=conn, table_name='data')
-
-
-        # Now load the data - pandas will respect the column types already defined
-        chunk_size = 10000
-        for i in tqdm(range(0, len(self.data), chunk_size)):
-            chunk = self.data.iloc[i:i + chunk_size]
-            try:
-                chunk.to_sql(con=conn, name="data", if_exists="append", index=False)
-                conn.commit()
-                logger.info(f"Loaded rows {i} to {min(i + chunk_size, len(self.data))}")
-            except:
-                logger.error(f"Error loading chunk {i} with content: {chunk}")
-                sub_chunk_size = 50
-                for j in range(0, len(chunk), 50):
-                    sub_chunk = chunk.iloc[j:j + sub_chunk_size]
-                    try:
-                        chunk.to_sql(con=conn, name="data", if_exists="append", index=False)
-                        conn.commit()
-                        logger.info(f"Loaded rows {i} to {min(i + chunk_size, len(self.data))}")
-                    except:
-                        logger.error(f"Error loading chunk {i} to sub_chunk {j} with content: {sub_chunk}")
+            self.data.to_sql(con=conn, name="data", if_exists="append", index=False)
+        else:
+            self.data.to_sql(con=conn, name="data", if_exists="replace", index=False)
 
         # Verify data was loaded correctly
         count_query = "SELECT COUNT(*) FROM data"
