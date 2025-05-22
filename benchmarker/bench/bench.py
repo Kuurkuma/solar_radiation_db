@@ -1,10 +1,12 @@
 import logging
 import sys
 import pandas as pd
-from sqlalchemy import create_engine, text
+from sqlalchemy import create_engine, text, MetaData, Table, Column, Integer
+from sqlalchemy.dialects.mysql import LONGTEXT, INTEGER, FLOAT, BOOLEAN, VARCHAR
 import kagglehub
 from kagglehub import KaggleDatasetAdapter
 from .databases import ClickHouseHandler, QueryMetrics
+from tqdm import tqdm
 
 logging.basicConfig(
     level=logging.INFO,
@@ -105,45 +107,16 @@ class Benchmarker(object):
         # Login to Kaggle
         kagglehub.login()
 
-        try:
-            # Download the file using the proper method
-            file_path = kagglehub.dataset_download(handle, path=path)
-            logger.info(f"Downloaded file to: {file_path}")
+        self.data = kagglehub.load_dataset(
+            handle=handle,
+            path=path,
+            adapter=KaggleDatasetAdapter.PANDAS,
+        )
 
-            # Try to load the file with pandas
-            try:
-                # First try standard JSON
-                self.data = pd.read_json(file_path)
-                result = "standard JSON"
-            except ValueError:
-                # If that fails, try JSONL format
-                try:
-                    self.data = pd.read_json(file_path, lines=True)
-                    result = "JSONL"
-                except ValueError:
-                    # Last resort: manual JSON fix
-                    with open(file_path, 'r') as f:
-                        content = f.read().strip()
-                        # Fix common JSON issues
-                        if content.endswith(','):
-                            content = content[:-1]
-                        if '[' in content and not content.endswith(']'):
-                            content += ']'
-                        result = "manual JSON"
+        logger.info(f"Loaded {len(self.data)} rows from Kaggle dataset")
+        logger.info(f"Data types: {self.data.dtypes}")
+        logger.info(f"Data sample: {self.data.head()}")
 
-                    # Parse the fixed content
-                    import json
-                    from io import StringIO
-                    fixed_json = json.loads(content)
-                    self.data = pd.DataFrame(fixed_json)
-
-            logger.info(f"Successfully loaded {len(self.data)} rows with {result} format")
-
-        except Exception as e:
-            logger.error(f"Error loading Kaggle dataset: {e}")
-            # Fallback to iris dataset if all else fails
-            self.data = pd.read_csv("https://raw.githubusercontent.com/mwaskom/seaborn-data/master/iris.csv")
-            logger.info(f"Fallback: Loaded {len(self.data)} rows from iris dataset")
 
     def define_queries(self, queries: list):
         """
@@ -292,15 +265,67 @@ class Benchmarker(object):
         """
         logger.info(f"Loading data to {database_handler.__class__.__name__}...")
 
+        # For MySQL, use Text(length=4294967295) which is equivalent to LONGTEXT
+        if database_handler.__class__.__name__ == 'MySQLHandler':
+
+
+            # Create a dictionary mapping column names to their SQLAlchemy types
+            dtype = {}
+
+            # Map each column to its appropriate SQL type
+            for col in self.data.columns:
+                if col == 'text':  # Explicitly set 'text' column to LONGTEXT
+                    dtype[col] = LONGTEXT
+                elif pd.api.types.is_string_dtype(self.data[col]):
+                    dtype[col] = LONGTEXT
+                elif pd.api.types.is_integer_dtype(self.data[col]):
+                    dtype[col] = INTEGER
+                elif pd.api.types.is_float_dtype(self.data[col]):
+                    dtype[col] = FLOAT
+                elif pd.api.types.is_bool_dtype(self.data[col]):
+                    dtype[col] = BOOLEAN
+                else:
+                    # Default to LONGTEXT for anything else to be safe
+                    dtype[col] = LONGTEXT
+
+            # Drop the table first to ensure a clean creation
+            conn.execute(text("DROP TABLE IF EXISTS data"))
+            conn.commit()
+
+            logger.info(f"Creating table with column types mapping {dtype}")
+
+            # Create the table with proper column types using SQLAlchemy
+            metadata = MetaData()
+            columns = [Column(col, dtype[col]) for col in self.data.columns]
+            table = Table('data', metadata, *columns)
+            metadata.create_all(conn.engine)
+
+            logger.info(f"Table created, now loading data")
+
         # Special handling for ClickHouse which requires an engine definition
         if isinstance(database_handler, ClickHouseHandler):
-
             self._create_clickhouse_table(conn=conn, table_name='data')
-            # Now we can load the data
-            self.data.to_sql(con=conn, name="data", if_exists="append", index=False)
-        else:
-            # For other databases, use the standard method
-            self.data.to_sql(con=conn, name="data", if_exists="replace", index=False)
+
+
+        # Now load the data - pandas will respect the column types already defined
+        chunk_size = 10000
+        for i in tqdm(range(0, len(self.data), chunk_size)):
+            chunk = self.data.iloc[i:i + chunk_size]
+            try:
+                chunk.to_sql(con=conn, name="data", if_exists="append", index=False)
+                conn.commit()
+                logger.info(f"Loaded rows {i} to {min(i + chunk_size, len(self.data))}")
+            except:
+                logger.error(f"Error loading chunk {i} with content: {chunk}")
+                sub_chunk_size = 50
+                for j in range(0, len(chunk), 50):
+                    sub_chunk = chunk.iloc[j:j + sub_chunk_size]
+                    try:
+                        chunk.to_sql(con=conn, name="data", if_exists="append", index=False)
+                        conn.commit()
+                        logger.info(f"Loaded rows {i} to {min(i + chunk_size, len(self.data))}")
+                    except:
+                        logger.error(f"Error loading chunk {i} to sub_chunk {j} with content: {sub_chunk}")
 
         # Verify data was loaded correctly
         count_query = "SELECT COUNT(*) FROM data"

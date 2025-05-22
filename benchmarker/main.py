@@ -44,7 +44,7 @@ if __name__ == "__main__":
     # Load local time series dataset
     benchmarker.get_data_from_kaggle(
         handle="devdope/900k-spotify",
-        path="900k Definitive Spotify Dataset.json"
+        path="spotify_dataset.csv"
     )
  
     # Load the queries to be executed
