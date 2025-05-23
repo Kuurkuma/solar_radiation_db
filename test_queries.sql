@@ -1,19 +1,19 @@
-CREATE TABLE IF NOT EXISTS data AS SELECT * FROM read_csv('/Users/macbook/Development/database_crash_test/data/no_headers_brandenburger_gate_seriescalc.csv')
+CREATE OR REPLACE TABLE data AS SELECT * FROM read_csv('/Users/macbook/Development/database_crash_test/data/no_headers_brandenburger_gate_seriescalc.csv')
 ;
 
 -- 16. Moving Average of Power Output 
 SELECT
     time,
-    P,
-    AVG(P) OVER (ORDER BY time ROWS BETWEEN 9 PRECEDING AND CURRENT ROW) as moving_average_10_row
+    power_output,
+    AVG(power_output) OVER (ORDER BY time ROWS BETWEEN 9 PRECEDING AND CURRENT ROW) as moving_average_10_row
 FROM data
 ORDER BY time;
 
 -- 17. Rank Data within Partitions
 SELECT
     DAY(time) as day,
-    P as power_output,
-    RANK() OVER (PARTITION BY P ORDER BY P ASC) as power_rank_in_category
+    power_output,
+    RANK() OVER (PARTITION BY power_output ORDER BY power_output ASC) as power_rank_in_category
 FROM data
 ORDER BY power_rank_in_category; -- Ordering results is separate from window function ordering
 
@@ -31,13 +31,6 @@ ORDER BY power_rank_in_category; -- Ordering results is separate from window fun
 --     description VARCHAR(255),
 --     is_active <BOOLEAN_TYPE>
 -- );
-SELECT 1; -- Dummy query to satisfy parser if the actual DDL is commented out
--- Notes:
--- <AUTO_INCREMENT_SYNTAX> (PostgreSQL: SERIAL, MySQL: AUTO_INCREMENT, DuckDB: INTEGER PRIMARY KEY AUTOINCREMENT)
--- <TIMESTAMP_TYPE> (TIMESTAMP, DATETIME)
--- <FLOAT_TYPE> (DOUBLE PRECISION, DOUBLE)
--- <BOOLEAN_TYPE> (BOOLEAN, TINYINT(1))
--- This query would need conditional generation in your Python code.
 
 -- 19. Create an Index (Tests index creation performance)
 -- Indexes are crucial for query performance, especially on filtered/ordered columns.
