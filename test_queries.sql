@@ -1,5 +1,44 @@
-CREATE OR REPLACE TABLE data AS SELECT * FROM read_csv('/Users/macbook/Development/database_crash_test/data/no_headers_brandenburger_gate_seriescalc.csv')
-;
+CREATE OR REPLACE TABLE data 
+AS SELECT * 
+FROM read_csv('/Users/macbook/Development/database_crash_test/data/no_headers_brandenburger_gate_seriescalc.csv');
+
+
+
+-- error queries wih mysql
+['-- The INTERVAL creates an error in mysql
+-- WINDOW FUNCTION Queries
+-- Power output changes
+SELECT
+    d.time,
+    power_output as power_output,\n    
+    LAG(power_output) OVER (ORDER BY time) as previous_power_output,\n    
+    power_output - LAG(power_output) OVER (ORDER BY time) as power_change\n
+    FROM data as d']
+
+-- test solution
+SELECT
+    time,
+    power_output,
+    previous_power_output,
+    power_output - previous_power_output as power_change
+FROM (
+    SELECT
+        d.time,
+        power_output,
+        LAG(power_output) OVER (ORDER BY time) as previous_power_output
+    FROM data as d
+) as subquery;
+
+-- soluton 2
+SELECT
+    d1.time,
+    d1.power_output,
+    d2.power_output AS previous_power_output,
+    d1.power_output - d2.power_output AS power_change
+FROM data d1
+LEFT JOIN data d2 ON d2.time = (SELECT MAX(time) FROM data WHERE time < d1.time)
+ORDER BY d1.time;
+
 
 -- 16. Moving Average of Power Output 
 SELECT
@@ -79,3 +118,4 @@ FROM DailyMaxPower;
 -- Standard SQL doesn't have a built-in CORR function, but many databases do.
 SELECT CORR(P, temperature) FROM data; -- Replace temperature with your actual column name
 -- Notes: CORR() function availability varies (Postgres, DuckDB usually have it). MySQL might require calculation.
+

@@ -40,17 +40,9 @@ SELECT
     t2.power_output as previous_power, 
     t1.power_output - t2.power_output as power_change
 FROM data t1
-JOIN data t2 ON t1.time = t2.time; -- The INTERVAL creates an error in mysql
+JOIN data t2 ON t1.time = t2.time; 
 
 -- WINDOW FUNCTION Queries
--- Power output changes
-SELECT
-    d.time,
-    power_output as power_output,
-    LAG(power_output) OVER (ORDER BY time) as previous_power_output,
-    power_output - LAG(power_output) OVER (ORDER BY time) as power_change
-FROM data as d;
-
 -- Running total
 SELECT
     time,
@@ -58,3 +50,13 @@ SELECT
     SUM(power_output) OVER (ORDER BY time) as running_total
 FROM data
 ORDER BY time;
+
+-- Power output changes
+SELECT
+    d1.time,
+    d1.power_output,
+    d2.power_output AS previous_power_output,
+    d1.power_output - d2.power_output AS power_change
+FROM data d1
+LEFT JOIN data d2 ON d2.time = (SELECT MAX(time) FROM data WHERE time < d1.time)
+ORDER BY d1.time;
