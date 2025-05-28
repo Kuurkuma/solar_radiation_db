@@ -723,7 +723,9 @@ class PostgresHandler(DockerDatabaseHandler):
         if not self.is_running():
             return False
 
+        
         try:
+            time.sleep(5)
             exit_code, _ = self.container.exec_run(
                 f"pg_isready -U {self.username} -d {self.database}", stderr=False
             )

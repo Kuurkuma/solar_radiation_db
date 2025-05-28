@@ -1,3 +1,5 @@
+-- Those are query to test before going to the protocol_queries.sql
+
 CREATE TABLE IF NOT EXISTS data AS SELECT * FROM read_csv('/Users/macbook/Development/database_crash_test/data/no_headers_brandenburger_gate_seriescalc.csv')
 ;
 
